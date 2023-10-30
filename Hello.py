@@ -14,37 +14,33 @@
 
 import streamlit as st
 from streamlit.logger import get_logger
+from PIL import Image
 
 LOGGER = get_logger(__name__)
 
+#image_DP = Image.open('./IMAGES/Gaussian_Plume_fr.png')
 
 def run():
     st.set_page_config(
-        page_title="Hello",
+        page_title="Usines à bitume - A69",
         page_icon="👋",
     )
 
-    st.write("# Welcome to Streamlit! 👋")
+    st.write("# Etudes d'impacts des centrales d'enrobage à bitume de l'A69")
 
-    st.sidebar.success("Select a demo above.")
+    st.sidebar.success("Choississez une étude ci dessus.")
 
     st.markdown(
         """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
+        L'objet de ce site web est de quantifier objectivement les impacts des émissions des cheminées des centrales d'enrobage à chaud prévu sur les sites de Puylaurens et Villeneuve-lès-lavaur. 
+    
+        Des informations complémentaires peuvent-être trouvées  [en suivant ce lien](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique).
+
+        Des modèles HYSPLIT peuvent-être lancés en ligne [ici](https://www.ready.noaa.gov/hypub-bin/dispasrc.pl) (site en anglais). 
+    
     """
     )
+    #st.image(image_DP, caption="Diagramme représentant une dispersion gaussienne d'un panache de fumée. [Wikipedia](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique#/media/Fichier:Gaussian_Plume_fr_(SVG).svg)")
 
 
 if __name__ == "__main__":

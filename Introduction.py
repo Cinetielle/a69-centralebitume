@@ -18,7 +18,7 @@ from PIL import Image
 
 LOGGER = get_logger(__name__)
 
-#image_DP = Image.open('./IMAGES/Gaussian_Plume_fr.png')
+image_DP = Image.open('./im/Gaussian_Plume_fr.png')
 
 def run():
     st.set_page_config(
@@ -38,9 +38,11 @@ def run():
 
         Des modèles HYSPLIT peuvent-être lancés en ligne [ici](https://www.ready.noaa.gov/hypub-bin/dispasrc.pl) (site en anglais). 
     
+        Le type de modèle utilisé ici est le suivant :
     """
     )
-    #st.image(image_DP, caption="Diagramme représentant une dispersion gaussienne d'un panache de fumée. [Wikipedia](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique#/media/Fichier:Gaussian_Plume_fr_(SVG).svg)")
+
+    st.image(image_DP, caption="Diagramme représentant une dispersion gaussienne d'un panache de fumée. Wikipedia common.")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ import numpy as np
 
 import streamlit as st
 from streamlit.hello.utils import show_code
-
+import pandas as pd
 
 def animation_demo() -> None:
 

@@ -19,50 +19,30 @@ import numpy as np
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
+import datetime
+import matplotlib.pyplot as plt
 
-def animation_demo() -> None:
+meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
+date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
 
-    # Interactive Streamlit elements, like these sliders, return their value.
-    # This gives you an extremely simple interaction model.
-    iterations = st.sidebar.slider("Level of detail", 2, 20, 10, 1)
-    separation = st.sidebar.slider("Separation", 0.7, 2.0, 0.7885)
+def data_explore() -> None:
 
-    # Non-interactive elements return a placeholder to their location
-    # in the app. Here we're storing progress_bar to update it later.
-    progress_bar = st.sidebar.progress(0)
+    # set time series
+    start_date = st.sidebar.date_input('Début', date[0]+datetime.timedelta(days=5))
+    end_date = st.sidebar.date_input('Fin', date[len(date)-1])
 
-    # These two elements will be filled in later, so we create a placeholder
-    # for them using st.empty()
-    frame_text = st.sidebar.empty()
-    image = st.empty()
+    filtre = (date>= pd.to_datetime(start_date)) & (date<= pd.to_datetime(end_date))
+    meteo_slice = meteo[filtre]
+    header = meteo.columns[1:]
+    st.dataframe(meteo_slice)
 
-    m, n, s = 960, 640, 400
-    x = np.linspace(-m / s, m / s, num=m).reshape((1, m))
-    y = np.linspace(-n / s, n / s, num=n).reshape((n, 1))
+    to_plot = st.sidebar.selectbox("Which data to display ?", header)
 
-    for frame_num, a in enumerate(np.linspace(0.0, 4 * np.pi, 100)):
-        # Here were setting value for these two elements.
-        progress_bar.progress(frame_num)
-        frame_text.text("Frame %i/100" % (frame_num + 1))
-
-        # Performing some fractal wizardry.
-        c = separation * np.exp(1j * a)
-        Z = np.tile(x, (n, 1)) + 1j * np.tile(y, (1, m))
-        C = np.full((n, m), c)
-        M: Any = np.full((n, m), True, dtype=bool)
-        N = np.zeros((n, m))
-
-        for i in range(iterations):
-            Z[M] = Z[M] * Z[M] + C[M]
-            M[np.abs(Z) > 2] = False
-            N[M] = i
-
-        # Update the image placeholder by calling the image() function on it.
-        image.image(1.0 - (N / N.max()), use_column_width=True)
-
-    # We clear elements by calling empty on them.
-    progress_bar.empty()
-    frame_text.empty()
+    fig, ax = plt.subplots()
+    ax.plot(date[filtre], meteo_slice[to_plot], c='k') 
+    ax.set_xlabel("Date")
+    ax.set_ylabel(to_plot)
+    st.pyplot(fig)
 
     # Streamlit widgets automatically run the script from top to bottom. Since
     # this button is not connected to any other logic, it just causes a plain
@@ -70,15 +50,15 @@ def animation_demo() -> None:
     st.button("Re-run")
 
 
-st.set_page_config(page_title="Animation Demo", page_icon="📹")
-st.markdown("# Animation Demo")
-st.sidebar.header("Animation Demo")
-st.write(
-    """This app shows how you can use Streamlit to build cool animations.
-It displays an animated fractal based on the the Julia Set. Use the slider
-to tune different parameters."""
+st.set_page_config(page_title="Les données", page_icon="📹")
+st.markdown("# Les données")
+st.sidebar.header("Les données")
+st.markdown(
+    """
+    Cette page permet d'explorer et de configurer les données d'entrées.
+    
+    La météo : historique enregistré à cette [station](https://puylaurens.payrastre.fr).
+    """
 )
 
-animation_demo()
-
-show_code(animation_demo)
+data_explore()

@@ -36,13 +36,20 @@ def data_explore() -> None:
     header = meteo.columns[1:]
     st.dataframe(meteo_slice)
 
-    to_plot = st.sidebar.selectbox("Quelle donnée afficher ?", header)
+    choice = ['Température (°C)', 'Précipitation & Humidité (%)', 'Pression (hPa)', 'Vitesse des vents (m/s)']
 
-    fig, ax = plt.subplots()
-    ax.plot(date[filtre], meteo_slice[to_plot], c='k') 
-    ax.set_xlabel("Date")
-    ax.set_ylabel(to_plot)
-    st.pyplot(fig)
+    to_plot = st.sidebar.selectbox("Quelle donnée afficher ?", choice)
+
+    if to_plot == 'Température (°C)':
+        fig, ax = plt.subplots()
+        ax.plot(date[filtre], meteo_slice['Temp_Moy '], c='k')
+        ax.plot(date[filtre], meteo_slice['T_MEAN'], c='k') 
+        ax.fill_between(date[filtre], meteo_slice['T_LOW'], meteo_slice['T_HIGH'], color='gray', alpha=.5, linewidth=0)
+        ax.fill_between(date[filtre], meteo_slice['Temp_Min'], meteo_slice['Temp_Max'], color='gray', alpha=.5, linewidth=0)
+        ax.set_xlabel("Date")
+        ax.set_ylabel(to_plot)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+        st.pyplot(fig)
 
     # Streamlit widgets automatically run the script from top to bottom. Since
     # this button is not connected to any other logic, it just causes a plain

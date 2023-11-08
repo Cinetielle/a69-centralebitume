@@ -190,9 +190,9 @@ def data_explore() -> None:
     st.button("Re-run")
 
 
-st.set_page_config(page_title="Les données", page_icon="📹")
+st.set_page_config(page_title="Les données", page_icon="📊")
 st.markdown("# Les données de la station météo de Puylaurens")
-st.sidebar.header("Les données")
+st.sidebar.header("Paramètres")
 st.markdown(
     """
     Cette page permet d'explorer et de configurer les données d'entrées.

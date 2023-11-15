@@ -32,7 +32,7 @@ def run():
 
     st.markdown(
         """
-        L'objet de ce site web est de quantifier objectivement les impacts des émissions des cheminées des centrales d'enrobage à chaud prévu sur les sites de Puylaurens et Villeneuve-lès-lavaur. 
+        L'objet de ce site web est de quantifier objectivement les impacts des émissions volatiles des cheminées des centrales d'enrobage à chaud prévu sur les sites de Puylaurens et Villeneuve-lès-lavaur. 
     
         Des informations complémentaires peuvent-être trouvées  [en suivant ce lien](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique).
 

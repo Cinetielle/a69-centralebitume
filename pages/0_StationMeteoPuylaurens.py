@@ -29,14 +29,13 @@ def data_explore() -> None:
 
     # set time series
     start_date = st.sidebar.date_input('Début de période', date[0]+datetime.timedelta(days=5))
-    end_date = st.sidebar.date_input('Fin de période', date[len(date)-1])
+    end_date = st.sidebar.date_input('Fin de période', start_date+datetime.timedelta(days=5+30))
 
     filtre = (date>= pd.to_datetime(start_date)) & (date<= pd.to_datetime(end_date))
     meteo_slice = meteo[filtre]
     header = meteo.columns[1:]
-    st.dataframe(meteo_slice)
 
-    choice = ['Température (°C)', 'Précipitation (mm) & Humidité (%)', 'Pression (hPa)', 'Vitesse des vents (m/s)', 'Rose des vents', 'Propagation des particules']
+    choice = ['Température (°C)', 'Précipitation (mm) & Humidité (%)', 'Pression (hPa)', 'Vitesse des vents (m/s)', 'Rose des vents', 'Table des données']
 
     to_plot = st.sidebar.selectbox("Quelle(s) donnée(s) afficher ?", choice)
 
@@ -48,6 +47,7 @@ def data_explore() -> None:
         ax.fill_between(date[filtre], meteo_slice['Temp_Min'], meteo_slice['Temp_Max'], color='gray', alpha=.5, linewidth=0)
         ax.set_xlabel("Date")
         ax.set_ylabel(to_plot)
+        ax.set_xlim(start_date, end_date)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         st.pyplot(fig)
 
@@ -57,8 +57,13 @@ def data_explore() -> None:
         ax.bar(date[filtre], meteo_slice['RAIN'], color='dodgerblue', alpha=0.5, edgecolor=None, width=datetime.timedelta(days=1))
         ax.bar(date[filtre], meteo_slice['Precipitation [mm]'], color='dodgerblue', alpha=0.5, edgecolor=None, width=datetime.timedelta(days=1))
         ax2.fill_between(date[filtre], meteo_slice['Humidite_Min [%]'], meteo_slice['Humidite_Max [%]'], color='gray', alpha=.5, linewidth=0)
-        ax.plot(date[filtre], meteo_slice['Humidite_Moy [%]'], c='k') 
+        ax2.plot(date[filtre], meteo_slice['Humidite_Moy [%]'], c='k', alpha=0.25) 
         ax.set_xlabel("Date")
+        ax.set_xlim(start_date, end_date)
+        ax.set_ylim(np.nanmin([np.nanmin(meteo_slice['Precipitation [mm]']), np.nanmin(meteo_slice['RAIN'])]), np.nanmax([np.nanmax(meteo_slice['Precipitation [mm]']), np.nanmax(meteo_slice['RAIN'])]))
+        ax2.set_ylim(np.nanmin(meteo_slice['Humidite_Min [%]']), np.nanmax(meteo_slice['Humidite_Max [%]']))
+        ax.yaxis.label.set_color('dodgerblue')
+        ax2.yaxis.label.set_color('gray')
         ax.set_ylabel(to_plot.split('&')[0])
         ax2.set_ylabel(to_plot.split('&')[1])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -68,6 +73,7 @@ def data_explore() -> None:
         fig, ax = plt.subplots()
         ax.fill_between(date[filtre], meteo_slice['Pression_Min [hPa]'], meteo_slice['Pression_Max [hPa]'], color='gray', alpha=.5, linewidth=0)
         ax.set_xlabel("Date")
+        ax.set_xlim(start_date, end_date)
         ax.set_ylabel(to_plot)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         st.pyplot(fig)
@@ -78,6 +84,7 @@ def data_explore() -> None:
         ax.plot(date[filtre], meteo_slice[header[19]]/3.6, c='k')
         ax.fill_between(date[filtre], meteo_slice[header[20]]/3.6, meteo_slice['HIGH']/3.6, color='gray', alpha=.5, linewidth=0)
         ax.plot(date[filtre], meteo_slice['AVG_WIND_SPEED']/3.6, c='k')        
+        ax.set_xlim(start_date, end_date)
         ax.set_xlabel("Date")
         ax.set_ylabel(to_plot)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -155,53 +162,8 @@ def data_explore() -> None:
         ax2.set_title('Rose des vents - vitesses maximales journalières (m/s)')
         st.pyplot(fig2)
 
-    elif to_plot == 'Propagation des particules':
-        st.markdown("""
-                    Supposons que nous représentions le déplacement moyen d'une particule par jour sur la plage temporelle choisis.
-                    \n Cet outil permet de voir à quelle vitesse et dans quelle direction cette particule se déplace (Nord en haut).
-                    """)
-        v = meteo_slice[header[19]]/3.6
-        vdir = meteo_slice['DOM_DIR']
-        fig3, ax3 = plt.subplots()
-        v = v.to_numpy()
-        time = st.sidebar.slider("Choisir un temps après émission (seconde)", value=1., min_value=0.1, max_value=10., step=0.1)
-        u_vent_unit = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
-        u_vent = u_vent_unit*v[:, np.newaxis]*time
-        cmap= plt.get_cmap('jet')
-        cvv = v/np.nanmax(v)
-        for dx, dy, c in zip(u_vent[:, 0], u_vent[:, 1], cvv):
-            c = cmap(c)
-            ax3.annotate("", xytext=(dx,dy),xy=(dx+0.001*dx,dy+0.001*dy), 
-            arrowprops=dict(arrowstyle="->", color=c), size = 10, alpha=0.6)
-        ax3.scatter(0, 0, c='k', s=100)
-        ax3.set_facecolor('xkcd:gray')
-        ax3.set_aspect('equal')
-        ax3.grid()
-        ax3.set_xlim(-7, 7)
-        ax3.set_ylim(-7, 7)
-        ax3.set_xlabel(f"Position en abcisse d'une particule \n {time}s après son émission à l'origine (m)")
-        ax3.set_ylabel(f"Position en ordonnée d'une particule \n {time}s après son émission à l'origine (m)")
-        st.pyplot(fig3)
-        fig4, ax4 = plt.subplots()
-        v = v.to_numpy()
-        time = st.sidebar.slider("Choisir un temps après émission (seconde)", value=10, min_value=1, max_value=3600, step=1)
-        u_vent_unit = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
-        u_vent = u_vent_unit*v[:, np.newaxis]*time
-        cmap= plt.get_cmap('jet')
-        cvv = v/np.nanmax(v)
-        for dx, dy, c in zip(u_vent[:, 0], u_vent[:, 1], cvv):
-            c = cmap(c)
-            ax3.annotate("", xytext=(dx,dy),xy=(dx+0.001*dx,dy+0.001*dy), 
-            arrowprops=dict(arrowstyle="->", color=c), size = 10, alpha=0.6)
-        ax3.scatter(0, 0, c='k', s=100)
-        ax3.set_facecolor('xkcd:gray')
-        ax3.set_aspect('equal')
-        ax3.grid()
-        ax3.set_xlim(-1000, 1000)
-        ax3.set_ylim(-1000, 1000)
-        ax3.set_xlabel(f"Position en abcisse d'une particule \n {time}s après son émission à l'origine (m)")
-        ax3.set_ylabel(f"Position en ordonnée d'une particule \n {time}s après son émission à l'origine (m)")
-        st.pyplot(fig4)
+    elif to_plot == 'Table des données':
+        st.dataframe(meteo_slice)
 
 
     # Streamlit widgets automatically run the script from top to bottom. Since
@@ -215,11 +177,13 @@ st.markdown("# Les données de la station météo de Puylaurens")
 st.sidebar.header("Paramètres")
 st.markdown(
     """
-    Cette page permet d'explorer et de configurer les données d'entrées.
+    Cette page permet d'explorer les données météo d'entrées.
     
     La météo : historique enregistré à cette [station](https://puylaurens.payrastre.fr).
     
     Il est possible de sélectionner une période de début et de fin dans le panneau latéral.
+
+    ---
     """
 )
 

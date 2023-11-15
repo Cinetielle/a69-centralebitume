@@ -46,12 +46,9 @@ st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
 st.markdown("# Le calcul et ses options")
 st.sidebar.header("Paramètres")
 st.write(
-    """Nous allons voir ici comment le code fonctionne et quels sont les options accessibles"""
+    """Nous allons voir ici comment le code fonctionne et quelles sont les options accessibles"""
 )
 
-st.write(
-    """Nous allons voir ici comment le code fonctionne et quels sont les options accessibles"""
-)
 
 # plotting_demo()
 

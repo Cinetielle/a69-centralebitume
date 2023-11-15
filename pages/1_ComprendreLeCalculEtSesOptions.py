@@ -18,7 +18,9 @@ import numpy as np
 
 import streamlit as st
 from streamlit.hello.utils import show_code
+from PIL import Image
 
+image_DP = Image.open('./im/Gaussian_Plume_fr.png')
 
 # def plotting_demo():
 #     progress_bar = st.sidebar.progress(0)
@@ -46,14 +48,34 @@ st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
 st.markdown("# Le calcul et ses options")
 st.sidebar.header("Paramètres")
 st.markdown(
-    """## Nous allons voir ici comment le code fonctionne et quelles sont les options accessibles.
+    """
+    ## Principe du code.
 
-    Le principe de l'algorithme empirique utilisé ici
+    Le principe de l'algorithme empirique utilisé ici et celui de la dispersion atmosphérique des panaches gaussiens.
+
     
-    ---
+    
+    """
+)
+st.image(image_DP, caption="Diagramme représentant une dispersion gaussienne d'un panache de fumée. Wikipedia common.")
+
+st.markdown(
+    """
+    ## Les éléments structurants.
+
+    Le principe de l'algorithme empirique utilisé ici.
+    
     """
 )
 
+st.markdown(
+    """
+    ## Options du code.
+
+    ..
+    
+    """
+)
 
 # plotting_demo()
 

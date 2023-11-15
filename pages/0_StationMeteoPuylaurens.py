@@ -182,6 +182,26 @@ def data_explore() -> None:
         ax3.set_xlabel(f"Position en abcisse d'une particule \n {time}s après son émission à l'origine (m)")
         ax3.set_ylabel(f"Position en ordonnée d'une particule \n {time}s après son émission à l'origine (m)")
         st.pyplot(fig3)
+        fig4, ax4 = plt.subplots()
+        v = v.to_numpy()
+        time = st.sidebar.slider("Choisir un temps après émission (seconde)", value=10, min_value=1, max_value=3600, step=1)
+        u_vent_unit = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
+        u_vent = u_vent_unit*v[:, np.newaxis]*time
+        cmap= plt.get_cmap('jet')
+        cvv = v/np.nanmax(v)
+        for dx, dy, c in zip(u_vent[:, 0], u_vent[:, 1], cvv):
+            c = cmap(c)
+            ax3.annotate("", xytext=(dx,dy),xy=(dx+0.001*dx,dy+0.001*dy), 
+            arrowprops=dict(arrowstyle="->", color=c), size = 10, alpha=0.6)
+        ax3.scatter(0, 0, c='k', s=100)
+        ax3.set_facecolor('xkcd:gray')
+        ax3.set_aspect('equal')
+        ax3.grid()
+        ax3.set_xlim(-1000, 1000)
+        ax3.set_ylim(-1000, 1000)
+        ax3.set_xlabel(f"Position en abcisse d'une particule \n {time}s après son émission à l'origine (m)")
+        ax3.set_ylabel(f"Position en ordonnée d'une particule \n {time}s après son émission à l'origine (m)")
+        st.pyplot(fig4)
 
 
     # Streamlit widgets automatically run the script from top to bottom. Since

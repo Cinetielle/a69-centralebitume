@@ -28,9 +28,9 @@ date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
 def data_explore() -> None:
 
     # set time series
-    start_date = st.sidebar.date_input('Début de période', date[0]+datetime.timedelta(days=5))
-    end_date = st.sidebar.date_input('Fin de période', start_date+datetime.timedelta(days=5+30))
-
+    end_date = st.sidebar.date_input('Fin de période', date.iloc[len(date)-1])
+    start_date = st.sidebar.date_input('Début de période', end_date-datetime.timedelta(days=60))
+    
     filtre = (date>= pd.to_datetime(start_date)) & (date<= pd.to_datetime(end_date))
     meteo_slice = meteo[filtre]
     header = meteo.columns[1:]

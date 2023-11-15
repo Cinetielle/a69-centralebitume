@@ -45,8 +45,13 @@ from streamlit.hello.utils import show_code
 st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
 st.markdown("# Le calcul et ses options")
 st.sidebar.header("Paramètres")
-st.write(
-    """Nous allons voir ici comment le code fonctionne et quelles sont les options accessibles"""
+st.markdown(
+    """## Nous allons voir ici comment le code fonctionne et quelles sont les options accessibles.
+
+    Le principe de l'algorithme empirique utilisé ici
+    
+    ---
+    """
 )
 
 

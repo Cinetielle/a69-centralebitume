@@ -224,14 +224,23 @@ st.markdown(
 
 topographie_zoom()
 
-st.markdown(
-    """
+st.markdown("""
+            
     ### Les données sur l'émission de la centrale à bitume
+    <div style="text-align: justify;">
     <p>
-    Les données sur l'émission de la centrale à bitume sont présentées dans une <a href='EmissionsCentrale' target='_self'>page dédiée</a>.
-    Nous retiendrons qu'il existe des données moyennes journalières et des données avec un pas de 5 minutes.
+    Les données sur les produits émis par la centrale à bitume sont présentées dans une <a href='EmissionsCentrale' target='_self'>page dédiée</a>.
     </p>
+    <p>
+    Nous retiendrons ici les paramètres suivants pour la centrale de Puylaurens (RF500), tel que mentionné dans les documents techniques (pièce E6) :
+    </p>
+    </div>
+    <ol>
+    <li> Le diamètre de la cheminée est le 1.35 m.</li>
+    <li> La température à la sortie de la cheminée est de 110°C.</li>
+    <li> La vitesse réglementaire minimum en sortie de cheminée est de 8 m/s</li> </ol>
     """
+    , unsafe_allow_html=True
 )
 
 # show_code(plotting_demo)

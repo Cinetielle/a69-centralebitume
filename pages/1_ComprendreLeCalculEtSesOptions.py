@@ -205,9 +205,9 @@ def surelevation():
     Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
     xmax = st.sidebar.slider(r"Choisir la distance maximale à évaluer", value=5000, min_value=1000, max_value=20000, step=10)
     d = 1.35
-    v = float(meteo_slice[header[19]]/3.6) # vitesse du vent en m/s
-    Pa = float((meteo_slice['Pression_Min [hPa]']+meteo_slice['Pression_Max [hPa]'])/2) # pression atmosphérique en Pa
-    Ta = float(meteo_slice['Temp_Moy ']) # température de l'air en °C
+    v = float(meteo_slice[header[19]].iloc[0]/3.6) # vitesse du vent en m/s
+    Pa = float((meteo_slice['Pression_Min [hPa]'].iloc[0]+meteo_slice['Pression_Max [hPa]'].iloc[0])/2) # pression atmosphérique en Pa
+    Ta = float(meteo_slice['Temp_Moy '].iloc[0]) # température de l'air en °C
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
     Hair = 1940 # enthalpie de l'air à 100% d'humidité relative et 83°C en kJ/kg
     debit_masse_air =(53400*0.94)/3600 #kg/s tel que donné dans le document SPIE
@@ -249,7 +249,7 @@ st.markdown(
     """  
     <div style="text-align: justify;">
     <p>
-    Il a été construit sur la base du <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">support de cours</a> du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations. La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives.
+    Il a été construit sur la base du <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">support de cours</a> du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations. La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives. Le lecteur intéressé (et anglophone) trouvera également la lecture de <a href="https://drive.google.com/file/d/1_LbkRy5sfpjzgBUT1e8S5dCJ5hFHkWdL/view?usp=sharing">cet ouvrage</a>intéressant.
     </p>
 
     <p>

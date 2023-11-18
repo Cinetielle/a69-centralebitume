@@ -238,7 +238,10 @@ st.markdown("""
     <ol>
     <li> Le diamètre de la cheminée est le 1.35 m.</li>
     <li> La température à la sortie de la cheminée est de 110°C.</li>
-    <li> La vitesse réglementaire minimum en sortie de cheminée est de 8 m/s</li> </ol>
+    <li> La vitesse réglementaire minimum en sortie de cheminée est de 8 m.s<sup>-1</sup> soit un débit minimum de 41 224 m<sup>3</sup>.h<sup>-1</sup> </li>
+    <li> Le débit technique maximum est de 120 633 m<sup>3</sup>.h<sup>-1</sup>, soit une vitesse réglementaire maximum en sortie de cheminée de 23.4 m.s<sup>-1</sup></li>
+    <li> Un débit moyen de 71 433 +/- 8 067 m<sup>3</sup>.h<sup>-1</sup>, et une vitesse moyenne en sortie de cheminée de 13.9 +/- 1.4 m.s<sup>-1</sup> sont indiquée dans <a href="https://drive.google.com/file/d/10J062gaUUuA9CHmDnayOKdIv6I0haijt/view?usp=sharing">les caractéristiques fournies par la SPIE Batignolles-Malet via ATOSCA</a>.</li>
+    </ol>
     """
     , unsafe_allow_html=True
 )

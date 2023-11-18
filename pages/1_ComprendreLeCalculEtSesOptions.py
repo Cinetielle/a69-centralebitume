@@ -25,6 +25,7 @@ from PIL import Image
 
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
+image_DP3 = Image.open('./im/Turner1970.png')
 
 #coordonnée de la sortie de cheminée
 #-5 mètre pour intégrer le décaissement
@@ -205,9 +206,9 @@ def surelevation():
     Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
     xmax = st.sidebar.slider(r"Choisir la distance maximale à évaluer", value=5000, min_value=1000, max_value=20000, step=10)
     d = 1.35
-    v = float(meteo_slice[header[19]].iloc[0]/3.6) # vitesse du vent en m/s
-    Pa = float((meteo_slice['Pression_Min [hPa]'].iloc[0]+meteo_slice['Pression_Max [hPa]'].iloc[0])/2) # pression atmosphérique en Pa
-    Ta = float(meteo_slice['Temp_Moy '].iloc[0]) # température de l'air en °C
+    v = meteo_slice[header[19]].iloc[0]/3.6 # vitesse du vent en m/s
+    Pa = (meteo_slice['Pression_Min [hPa]'].iloc[0]+meteo_slice['Pression_Max [hPa]'].iloc[0])/2 # pression atmosphérique en Pa
+    Ta = meteo_slice['Temp_Moy '].iloc[0] # température de l'air en °C
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
     Hair = 1940 # enthalpie de l'air à 100% d'humidité relative et 83°C en kJ/kg
     debit_masse_air =(53400*0.94)/3600 #kg/s tel que donné dans le document SPIE
@@ -229,6 +230,185 @@ def surelevation():
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
 
+def sigma(stability, x):
+    """
+    application restricted to downwind distance < 10km
+    Parameters
+    ----------
+    stability : TYPE
+        pasquill stability
+    x : TYPE
+        downwind distance
+
+    Returns
+    -------
+    TYPE
+        return σy and σz
+        [[pasquill-gifford σy mode 1, np.nan], [pasquill-gifford σy mode 2, pasquill-gifford σz mode 2], [ASME79 σy mode 1, ASME79 σz mode 1],[Klug69 σy mode 1, Klug69 σz mode 1]]
+    """
+    empty = np.ones(x.shape)
+    empty[:, :] = np.nan
+
+    if stability == 'A':
+        A = np.asarray([[0.443*x**0.894, empty],
+                        [np.exp(-1.104+0.9878*np.log(x)-0.0076*np.log(x)**2) , np.exp(4.679-1.172*np.log(x)+0.227*np.log(x)**2)],
+                        [0.4*x**0.91, 0.4*x**0.91],
+                        [0.469*x**0.903, 0.017*x**1.38]])
+        return A
+    elif stability == 'A-B':
+        A = np.asarray([[0.443*x**0.894, empty],
+                        [np.exp(-1.104+0.9878*np.log(x)-0.0076*np.log(x)**2) , np.exp(4.679-1.172*np.log(x)+0.227*np.log(x)**2)],
+                        [0.4*x**0.91, 0.4*x**0.91],
+                        [0.469*x**0.903, 0.017*x**1.38]])
+        B = np.asarray([[0.324*x**0.894, empty],
+                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
+                        [0.36*x**0.86, 0.33*x**0.86],
+                        [0.306*x**0.885, 0.072*x**1.021]])
+        return (A+B)/2
+    elif stability == 'B':
+        B = np.asarray([[0.324*x**0.894, empty],
+                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
+                        [0.36*x**0.86, 0.33*x**0.86],
+                        [0.306*x**0.885, 0.072*x**1.021]])
+        return B
+    elif stability == 'B-C':
+        C = np.asarray([[0.216*x**0.894, empty],
+                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
+                        [empty, empty],
+                        [0.23*x**0.855, 0.076*x**0.879]])
+        B = np.asarray([[0.324*x**0.894, empty],
+                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
+                        [0.36*x**0.86, 0.33*x**0.86],
+                        [0.306*x**0.885, 0.072*x**1.021]])
+        return (C+B)/2
+    elif stability == 'C':
+        C = np.asarray([[0.216*x**0.894, empty],
+                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
+                        [empty, empty],
+                        [0.23*x**0.855, 0.076*x**0.879]])
+        return C
+    elif stability == 'C-D':
+        C = np.asarray([[0.216*x**0.894, empty],
+                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
+                        [empty, empty],
+                        [0.23*x**0.855, 0.076*x**0.879]])
+        D = np.asarray([[0.141*x**0.894, empty],
+                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
+                        [0.32*x**0.78, 0.22*x**0.78],
+                        [0.219*x**0.764, 0.140*x**0.727]])
+        return (C+D)/2
+    elif stability == 'D':
+        D = np.asarray([[0.141*x**0.894, empty],
+                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
+                        [0.32*x**0.78, 0.22*x**0.78],
+                        [0.219*x**0.764, 0.140*x**0.727]])
+        return D
+    elif stability == 'E':
+        E = np.asarray([[0.105*x**0.894, empty],
+                        [np.exp(-2.754+1.0106*np.log(x)-0.0064*np.log(x)**2) , np.exp(-3.783+1.301*np.log(x)-0.045*np.log(x)**2)],
+                        [empty, empty],
+                        [0.237*x**0.691, 0.217*x**0.61]])
+        return E
+    elif stability == 'F':
+        F = np.asarray([[0.071*x**0.894, empty],
+                        [np.exp(-3.143+1.0148*np.log(x)-0.007*np.log(x)**2) , np.exp(-4.49+1.4024*np.log(x)-0.054*np.log(x)**2)],
+                        [0.31*x**0.71, 0.06*x**0.71],
+                        [0.273*x**0.594, 0.262*x**0.5]])
+        return F
+    else:
+        D = np.asarray([[0.141*x**0.894, empty],
+                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
+                        [0.32*x**0.78, 0.22*x**0.78],
+                        [0.219*x**0.764, 0.140*x**0.727]])
+        return D
+
+def plot_dispersion():
+    x = np.arange(100, 20000, 10)
+    x = x [:, np.newaxis]
+    A = sigma('A', x)
+    AB = sigma('A-B', x)
+    B = sigma('B', x)
+    BC = sigma('B-C', x)
+    C = sigma('C', x)
+    CD = sigma('C-D', x)
+    D = sigma('D', x)
+    E = sigma('E', x)
+    F = sigma('F', x)
+
+    PG1 = st.checkbox("Pasquill & gifford, mode 1", False)
+    PG2 = st.checkbox("Pasquill & gifford, mode 2", True)
+    ASME79 = st.checkbox("ASME 1979, mode 1", False)
+    Klug1969 = st.checkbox("Klug 1969, mode 1", False)
+
+    #sigma y
+    fig, ax = plt.subplots()
+    if PG2:
+        ax.plot(x, A[1, 0, :, 0], c='purple', label='A')
+        ax.plot(x, B[1, 0, :, 0], c='navy', label='B')
+        ax.plot(x, C[1, 0, :, 0], c='dodgerblue', label='C')
+        ax.plot(x, D[1, 0, :, 0], c='lightseagreen', label='D')
+        ax.plot(x, E[1, 0, :, 0], c='skyblue', label='E')
+        ax.plot(x, F[1, 0, :, 0], c='lightgreen', label='F')
+    if PG1:
+        ax.plot(x, A[0, 0, :, 0], '--', c='purple')
+        ax.plot(x, B[0, 0, :, 0], '--', c='navy')
+        ax.plot(x, C[0, 0, :, 0], '--', c='dodgerblue')
+        ax.plot(x, D[0, 0, :, 0], '--', c='lightseagreen')
+        ax.plot(x, E[0, 0, :, 0], '--', c='skyblue')
+        ax.plot(x, F[0, 0, :, 0], '--', c='lightgreen')
+    if ASME79:
+        ax.plot(x, A[2, 0, :, 0], '-.', c='purple')
+        ax.plot(x, B[2, 0, :, 0], '-.', c='navy')
+        ax.plot(x, C[2, 0, :, 0], '-.', c='dodgerblue')
+        ax.plot(x, D[2, 0, :, 0], '-.', c='lightseagreen')
+        ax.plot(x, E[2, 0, :, 0], '-.', c='skyblue')
+        ax.plot(x, F[2, 0, :, 0], '-.', c='lightgreen')
+    if Klug1969:
+        ax.plot(x, A[3, 0, :, 0], ':', c='purple')
+        ax.plot(x, B[3, 0, :, 0], ':', c='navy')
+        ax.plot(x, C[3, 0, :, 0], ':', c='dodgerblue')
+        ax.plot(x, D[3, 0, :, 0], ':', c='lightseagreen')
+        ax.plot(x, E[3, 0, :, 0], ':', c='skyblue')
+        ax.plot(x, F[3, 0, :, 0], ':', c='lightgreen')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.grid()
+    ax.legend()
+    ax.set_xlabel("Distance à la cheminée (m)")
+    ax.set_ylabel("Coefficient de dispersion dans le plan horizontal \n" + r"et perpendiculairement à la direction du vent ($\sigma _y$, m).")
+    st.pyplot(fig)
+
+    #sigma z
+    fig2, ax2 = plt.subplots()
+    if PG2:
+        ax2.plot(x, A[1, 1, :, 0], c='purple', label='A')
+        ax2.plot(x, B[1, 1, :, 0], c='navy', label='B')
+        ax2.plot(x, C[1, 1, :, 0], c='dodgerblue', label='C')
+        ax2.plot(x, D[1, 1, :, 0], c='lightseagreen', label='D')
+        ax2.plot(x, E[1, 1, :, 0], c='skyblue', label='E')
+        ax2.plot(x, F[1, 1, :, 0], c='lightgreen', label='F')
+    if ASME79:
+        ax2.plot(x, A[2, 1, :, 0], '-.', c='purple')
+        ax2.plot(x, B[2, 1, :, 0], '-.', c='navy')
+        ax2.plot(x, C[2, 1, :, 0], '-.', c='dodgerblue')
+        ax2.plot(x, D[2, 1, :, 0], '-.', c='lightseagreen')
+        ax2.plot(x, E[2, 1, :, 0], '-.', c='skyblue')
+        ax2.plot(x, F[2, 1, :, 0], '-.', c='lightgreen')
+    if Klug1969:
+        ax2.plot(x, A[3, 1, :, 0], ':', c='purple')
+        ax2.plot(x, B[3, 1, :, 0], ':', c='navy')
+        ax2.plot(x, C[3, 1, :, 0], ':', c='dodgerblue')
+        ax2.plot(x, D[3, 1, :, 0], ':', c='lightseagreen')
+        ax2.plot(x, E[3, 1, :, 0], ':', c='skyblue')
+        ax2.plot(x, F[3, 1, :, 0], ':', c='lightgreen')
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    ax2.set_ylim(1, 10000)
+    ax2.grid()
+    ax2.legend()
+    ax2.set_xlabel("Distance à la cheminée (m)")
+    ax2.set_ylabel("Coefficient de dispersion dans le plan vertical \n" + r"et perpendiculairement à la direction du vent ($\sigma _z$, m).")
+    st.pyplot(fig2)
 
 
 st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
@@ -413,9 +593,12 @@ st.markdown("""
             
         ### Les modèles de dispersion en fonction des conditions atmosphériques.
         <div style="text-align: justify;">
-            
+        Les coefficients de dispersion
         </div>    
         """
     , unsafe_allow_html=True
 )
 
+st.image(image_DP3, caption="Stabilité atmosphérique : classification de Pasquill. D'après Turner, 1970. \n A: très instable ; B : instable ; C : peu instable ; D: neutre ; E : stable ; F : très stable.")
+
+plot_dispersion()

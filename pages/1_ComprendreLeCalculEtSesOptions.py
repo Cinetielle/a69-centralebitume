@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -61,6 +61,9 @@ dist_XY = np.sqrt(X_**2+Y_**2)
 dist_XYZ = np.sqrt(X_**2+Y_**2+Z_**2)
 extent = [X.min(), X.max(), Y.min(), Y.max()]
 
+meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
+date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
+
 def topographie():
     fig, ax = plt.subplots()
     ax.scatter(x0, y0, c='red', label='Usine à bitume RF500')
@@ -90,6 +93,143 @@ def topographie_zoom():
     plt.ylim(extent[2], extent[3])
     ax.legend(loc='lower left')
     st.pyplot(fig)
+
+def Δh_Holland(Vs, v, d, Pa, Ts, Ta):
+    """
+
+    Parameters
+    ----------
+    Pa : TYPE
+        pression atmospherique en mbar
+    Vs : TYPE
+        vitesse des gaz en sortie de cheminée en m/s
+    v : TYPE
+        vitesse du vent à la hauteur de la cheminée en m/s
+    d : TYPE
+        Diamètre de la cheminée en m
+    Ts : TYPE
+        Température en sortie de cheminée en °K
+    Ta : TYPE
+        Temperature ambiante en °K
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+    return Vs*d*(1.5+0.00268*Pa*d*((Ts-Ta)/(Ts+273.15)))/v
+
+def Δh_CarsonAndMoses(Vs, v, d, Qh):
+    """
+    Parameters
+    ----------
+    Vs : TYPE
+        vitesse des gaz en sortie de cheminée en m/s
+    v : TYPE
+        vitesse du vent à la hauteur de la cheminée en m/s
+    d : TYPE
+        Diamètre de la cheminée en m
+    Qh : TYPE
+        Débit de Chaleur en kJ/s
+
+    Returns
+    -------
+    TYPE
+        surélévation du panache
+    """
+    return -0.029*Vs*d/v + 2.62*np.sqrt(Qh)*d/v
+
+def Δh_Concawes(v, d, Qh):
+    """
+    Parameters
+    ----------
+    v : TYPE
+        vitesse du vent à la hauteur de la cheminée
+    d : TYPE
+        Diamètre de la cheminée
+    Qh : TYPE
+        Débit de Chaleur en kJ/s
+
+    Returns
+    -------
+    TYPE
+        surélévation du panache
+    """
+    return 2.71*np.sqrt(Qh)*d/v**(3/4)
+
+def Δh_Briggs(x, Vs, v, d, Ts, Ta):
+    """
+    Formule la plus utilisée
+
+    Parameters
+    ----------
+    x : TYPE
+        distance XY à la source
+    Vs : TYPE
+        vitesse des gaz en sortie de cheminée en m/s
+    v : TYPE
+        vitesse du vent à la hauteur de la cheminée en m/s
+    d : TYPE
+        Diamètre de la cheminée en m
+    Ts : TYPE
+        Température en sortie de cheminée en °C
+    Ta : TYPE
+        Temperature ambiante en °C
+
+    Returns
+    -------
+    res : TYPE
+        surélévation d’un panache émis par une source ponctuelle
+
+    """
+    #effet dynamique en m4/s2
+    Fm = (Ta * Vs**2 * (d/2)**2)/(Ts*4)
+    #effet de flottabilité en m4/s3
+    g = 9.81
+    Fb = (g*Vs*(d/2)**2*(Ts-Ta))/(Ts*4)
+    if Fb < 55:
+        #limite d'application de la surélévation
+        xf = 49*Fb**(5/8)
+    else:
+        xf = 119*Fb**(2/5)
+    res = (3*Fm*x/(0.36*v**2) + 4.17*Fb*x**2/v**3)**(1/3)
+    res[x > xf] = (3/(2*0.6**2))**(1/3) * (Fb**(1/3)*x[x>xf]**(2/3))/v
+    return res
+                                           
+def surelevation():
+    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", date.iloc[len(date)-10])
+    filtre = (date== pd.to_datetime(date_meteo))
+    meteo_slice = meteo[filtre]
+    header = meteo.columns[1:]
+    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    xmax = st.sidebar.slider(r"Choisir la distance maximale à évaluer", value=5000, min_value=1000, max_value=20000, step=10)
+    d = 1.35
+    v = float(meteo_slice[header[19]]/3.6) # vitesse du vent en m/s
+    Pa = float((meteo_slice['Pression_Min [hPa]']+meteo_slice['Pression_Max [hPa]'])/2) # pression atmosphérique en Pa
+    Ta = float(meteo_slice['Temp_Moy ']) # température de l'air en °C
+    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
+    Hair = 1940 # enthalpie de l'air à 100% d'humidité relative et 83°C en kJ/kg
+    debit_masse_air =(53400*0.94)/3600 #kg/s tel que donné dans le document SPIE
+    Qh = Hair*debit_masse_air  #débit de chaleur en kJ/s
+    x = np.arange(0, xmax, 10)
+    briggs = Δh_Briggs(x, Vs, v, d, Ts, Ta)
+    Concawes = Δh_Concawes(v, d, Qh)
+    CarsonAndMoses = Δh_CarsonAndMoses(Vs, v, d, Qh)
+    Holland = Δh_Holland(Vs, v, d, Pa, Ts, Ta)
+
+    fig, ax = plt.subplots()
+    ax.plot(x, briggs, label='Briggs')
+    ax.plot([0, xmax], [Holland, Holland], label='Holland')
+    ax.plot([0, xmax], [Concawes, Concawes], label='Concawes')
+    ax.plot([0, xmax], [CarsonAndMoses, CarsonAndMoses], label='Carson & Moses')
+    ax.set_ylabel('Hauteur au dessus de la cheminée (m)')
+    ax.set_xlabel('Distance à la cheminée (m)')
+    ax.legend()
+    ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
+    st.pyplot(fig)
+
+
 
 st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
 st.markdown("# Le calcul et ses options")
@@ -240,10 +380,42 @@ st.markdown("""
     <li> La température à la sortie de la cheminée est de 110°C.</li>
     <li> La vitesse réglementaire minimum en sortie de cheminée est de 8 m.s<sup>-1</sup> soit un débit minimum de 41 224 m<sup>3</sup>.h<sup>-1</sup> </li>
     <li> Le débit technique maximum est de 120 633 m<sup>3</sup>.h<sup>-1</sup>, soit une vitesse réglementaire maximum en sortie de cheminée de 23.4 m.s<sup>-1</sup></li>
-    <li> Un débit moyen de 71 433 +/- 8 067 m<sup>3</sup>.h<sup>-1</sup>, et une vitesse moyenne en sortie de cheminée de 13.9 +/- 1.4 m.s<sup>-1</sup> sont indiquée dans <a href="https://drive.google.com/file/d/10J062gaUUuA9CHmDnayOKdIv6I0haijt/view?usp=sharing">les caractéristiques fournies par la SPIE Batignolles-Malet via ATOSCA</a>.</li>
+    <li> Un débit moyen de 71 433 +/- 8 067 m<sup>3</sup>.h<sup>-1</sup>, et une vitesse moyenne en sortie de cheminée de 13.9 +/- 1.4 m.s<sup>-1</sup> sont indiquées dans <a href="https://drive.google.com/file/d/10J062gaUUuA9CHmDnayOKdIv6I0haijt/view?usp=sharing">les caractéristiques fournies par la SPIE Batignolles-Malet via ATOSCA</a>.</li>
     </ol>
     """
     , unsafe_allow_html=True
 )
 
-# show_code(plotting_demo)
+st.markdown("""
+        ## Analyse des effets du modèle de surélévation du panache et de la dispersion en fonction de la stabilité atmosphérique.
+        
+        ### Les modèles de surélévation du panache
+        <div style="text-align: justify;">    
+        La surélévation du panache correspond à l'écart entre l'altitude de la bouche d'émission et le centre du panache. Nous avons mis en oeuvre les quatres modèles présentés par Christian Seigneur, à savoir:
+            <ol>
+            <li> Le modèle de Holland </li>
+            <li> Le modèle de Carson et Moses </li>
+            <li> Le modèle de Concawes </li>
+            <li> Le modèle de Briggs </li>
+            </ol>
+        Il est possible de voir la réponse des différents modèles ci-après, en fonction des conditions météo et des paramètres d'émission.
+         </div>
+            """
+    , unsafe_allow_html=True
+)       
+
+surelevation()
+
+st.markdown("""
+        <div style="text-align: justify;">    
+        D'après de professeur Seigneur, le modèle de Briggs est le plus utilisé dans les modèles de panaches gaussiens. C'est également celui-ci que nous utiliserons. A noter que c'est le seul à intégrer une variation en fonction de la distance à la cheminée. 
+        </div>
+            
+        ### Les modèles de dispersion en fonction des conditions atmosphériques.
+        <div style="text-align: justify;">
+            
+        </div>    
+        """
+    , unsafe_allow_html=True
+)
+

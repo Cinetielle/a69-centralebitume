@@ -199,6 +199,7 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     return res
                                            
 def surelevation():
+    global Vs, v, d, Ts, Ta, xmax
     date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", date.iloc[len(date)-10])
     filtre = (date== pd.to_datetime(date_meteo))
     meteo_slice = meteo[filtre]
@@ -323,8 +324,9 @@ def sigma(stability, x):
         return D
 
 def plot_dispersion():
-    x = np.arange(100, 20000, 10)
-    x = x [:, np.newaxis]
+    global x, PG1, PG2, ASME79, Klug1969
+    x = np.arange(100, xmax, 10)
+    x = x[:, np.newaxis]
     A = sigma('A', x)
     AB = sigma('A-B', x)
     B = sigma('B', x)
@@ -335,8 +337,8 @@ def plot_dispersion():
     E = sigma('E', x)
     F = sigma('F', x)
 
-    PG1 = st.checkbox("Pasquill & gifford, mode 1", False)
-    PG2 = st.checkbox("Pasquill & gifford, mode 2", True)
+    PG1 = st.checkbox("Pasquill & Gifford, mode 1", False)
+    PG2 = st.checkbox("Pasquill & Gifford, mode 2", True)
     ASME79 = st.checkbox("ASME 1979, mode 1", False)
     Klug1969 = st.checkbox("Klug 1969, mode 1", False)
 
@@ -347,29 +349,29 @@ def plot_dispersion():
         ax.plot(x, B[1, 0, :, 0], c='navy', label='B')
         ax.plot(x, C[1, 0, :, 0], c='dodgerblue', label='C')
         ax.plot(x, D[1, 0, :, 0], c='lightseagreen', label='D')
-        ax.plot(x, E[1, 0, :, 0], c='skyblue', label='E')
-        ax.plot(x, F[1, 0, :, 0], c='lightgreen', label='F')
+        ax.plot(x, E[1, 0, :, 0], c='lightgreen', label='E')
+        ax.plot(x, F[1, 0, :, 0], c='yellowgreen', label='F')
     if PG1:
         ax.plot(x, A[0, 0, :, 0], '--', c='purple')
         ax.plot(x, B[0, 0, :, 0], '--', c='navy')
         ax.plot(x, C[0, 0, :, 0], '--', c='dodgerblue')
         ax.plot(x, D[0, 0, :, 0], '--', c='lightseagreen')
-        ax.plot(x, E[0, 0, :, 0], '--', c='skyblue')
-        ax.plot(x, F[0, 0, :, 0], '--', c='lightgreen')
+        ax.plot(x, E[0, 0, :, 0], '--', c='lightgreen')
+        ax.plot(x, F[0, 0, :, 0], '--', c='yellowgreen')
     if ASME79:
         ax.plot(x, A[2, 0, :, 0], '-.', c='purple')
         ax.plot(x, B[2, 0, :, 0], '-.', c='navy')
         ax.plot(x, C[2, 0, :, 0], '-.', c='dodgerblue')
         ax.plot(x, D[2, 0, :, 0], '-.', c='lightseagreen')
-        ax.plot(x, E[2, 0, :, 0], '-.', c='skyblue')
-        ax.plot(x, F[2, 0, :, 0], '-.', c='lightgreen')
+        ax.plot(x, E[2, 0, :, 0], '-.', c='lightgreen')
+        ax.plot(x, F[2, 0, :, 0], '-.', c='yellowgreen')
     if Klug1969:
         ax.plot(x, A[3, 0, :, 0], ':', c='purple')
         ax.plot(x, B[3, 0, :, 0], ':', c='navy')
         ax.plot(x, C[3, 0, :, 0], ':', c='dodgerblue')
         ax.plot(x, D[3, 0, :, 0], ':', c='lightseagreen')
-        ax.plot(x, E[3, 0, :, 0], ':', c='skyblue')
-        ax.plot(x, F[3, 0, :, 0], ':', c='lightgreen')
+        ax.plot(x, E[3, 0, :, 0], ':', c='lightgreen')
+        ax.plot(x, F[3, 0, :, 0], ':', c='yellowgreen')
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.grid()
@@ -385,22 +387,22 @@ def plot_dispersion():
         ax2.plot(x, B[1, 1, :, 0], c='navy', label='B')
         ax2.plot(x, C[1, 1, :, 0], c='dodgerblue', label='C')
         ax2.plot(x, D[1, 1, :, 0], c='lightseagreen', label='D')
-        ax2.plot(x, E[1, 1, :, 0], c='skyblue', label='E')
-        ax2.plot(x, F[1, 1, :, 0], c='lightgreen', label='F')
+        ax2.plot(x, E[1, 1, :, 0], c='lightgreen', label='E')
+        ax2.plot(x, F[1, 1, :, 0], c='yellowgreen', label='F')
     if ASME79:
         ax2.plot(x, A[2, 1, :, 0], '-.', c='purple')
         ax2.plot(x, B[2, 1, :, 0], '-.', c='navy')
         ax2.plot(x, C[2, 1, :, 0], '-.', c='dodgerblue')
         ax2.plot(x, D[2, 1, :, 0], '-.', c='lightseagreen')
-        ax2.plot(x, E[2, 1, :, 0], '-.', c='skyblue')
-        ax2.plot(x, F[2, 1, :, 0], '-.', c='lightgreen')
+        ax2.plot(x, E[2, 1, :, 0], '-.', c='lightgreen')
+        ax2.plot(x, F[2, 1, :, 0], '-.', c='yellowgreen')
     if Klug1969:
         ax2.plot(x, A[3, 1, :, 0], ':', c='purple')
         ax2.plot(x, B[3, 1, :, 0], ':', c='navy')
         ax2.plot(x, C[3, 1, :, 0], ':', c='dodgerblue')
         ax2.plot(x, D[3, 1, :, 0], ':', c='lightseagreen')
-        ax2.plot(x, E[3, 1, :, 0], ':', c='skyblue')
-        ax2.plot(x, F[3, 1, :, 0], ':', c='lightgreen')
+        ax2.plot(x, E[3, 1, :, 0], ':', c='lightgreen')
+        ax2.plot(x, F[3, 1, :, 0], ':', c='yellowgreen')
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.set_ylim(1, 10000)
@@ -409,6 +411,55 @@ def plot_dispersion():
     ax2.set_xlabel("Distance à la cheminée (m)")
     ax2.set_ylabel("Coefficient de dispersion dans le plan vertical \n" + r"et perpendiculairement à la direction du vent ($\sigma _z$, m).")
     st.pyplot(fig2)
+
+def coupe_vertical():
+    global SA
+    z = np.arange(0, 1000, 2)
+    MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=1)
+    if MCD =="Pasquill & Gifford, mode 2":
+        i=1
+    elif MCD =="ASME 1979, mode 1":
+        i = 2
+    elif MCD =="Klug 1969, mode 1":
+        i=3
+ 
+ 
+    SA = st.selectbox("Définir la condition de stabilité atmosphérique", ['A', 'AB', 'B', 'BC', 'C', 'CD', 'D', 'E', 'F'], index=6)
+    X, Zx = np.meshgrid(x[:, 0], z)
+    Y = 0
+    surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
+    sigma_val = sigma(SA, X)
+    sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
+    sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
+    newZ = Zx-19-surelevation
+    C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(v*sigmay*sigmaz*2*np.pi)
+    fig, ax = plt.subplots()
+    f =ax.imshow(np.log10(C), extent=[X.min(), X.max(), Zx.min(), Zx.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral')
+    plt.colorbar(f, ax=ax, orientation='horizontal')
+    
+
+    y = np.arange(-2000, 2000, 2)
+    Y, Zy = np.meshgrid(y, z)
+    Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
+    ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
+    Xy = np.asarray([[Xy]])
+    
+    surelevation = Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
+    sigma_val = sigma(SA, Xy)
+    sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
+    sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
+    print(Y)
+    newZ = Zy-19-surelevation
+    C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(v*sigmay*sigmaz*2*np.pi)
+    #rint(C)
+    fig2,ax2 = plt.subplots()
+    f2 = ax2.imshow(np.log10(C), extent=[Y.min(), Y.max(), Zy.min(), Zy.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral')
+    plt.colorbar(f2, ax=ax2, orientation='horizontal')
+    
+    st.pyplot(fig)
+    st.pyplot(fig2)
+
+
 
 
 st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
@@ -429,7 +480,7 @@ st.markdown(
     """  
     <div style="text-align: justify;">
     <p>
-    Il a été construit sur la base du <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">support de cours</a> du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations. La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives. Le lecteur intéressé (et anglophone) trouvera également la lecture de <a href="https://drive.google.com/file/d/1_LbkRy5sfpjzgBUT1e8S5dCJ5hFHkWdL/view?usp=sharing">cet ouvrage</a>intéressant.
+    Il a été construit sur la base du support de cours (<a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">Introduction</a>, <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dynamique.pdf">Dynamique</a> et <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dispersion.pdf">Dispersion</a> ) du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations. La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives. Le lecteur intéressé (et anglophone) trouvera également la lecture de <a href="https://drive.google.com/file/d/1_LbkRy5sfpjzgBUT1e8S5dCJ5hFHkWdL/view?usp=sharing">cet ouvrage</a> intéressant.
     </p>
 
     <p>
@@ -520,7 +571,7 @@ st.markdown(
 
     #### Les données météorologiques
     <p>
-    Les données météorologique passées sont présentées dans une <a href='StationMeteoPuylaurens' target='_self'>page dédiée</a>.
+    Les données météorologiques passées sont présentées dans une <a href='StationMeteoPuylaurens' target='_self'>page dédiée</a>.
     Nous retiendrons qu'il existe des données moyennes journalières et des données avec un pas de 5 minutes.
     </p>
     <p>
@@ -593,7 +644,7 @@ st.markdown("""
             
         ### Les modèles de dispersion en fonction des conditions atmosphériques.
         <div style="text-align: justify;">
-        Les coefficients de dispersion
+        Les coefficients de dispersion correspondent à l'écart-type de la <a href="https://fr.wikipedia.org/wiki/Fonction_gaussienne">loi gaussienne</a>. Ces coefficients sont principalement déterminés par la distance à la source et par les conditions de stabilité atmosphérique, eux même déterminé par l'insolation, la vitesse du vent et la nébulosité (voir la classification de Pasquill ci-dessous).
         </div>    
         """
     , unsafe_allow_html=True
@@ -601,4 +652,30 @@ st.markdown("""
 
 st.image(image_DP3, caption="Stabilité atmosphérique : classification de Pasquill. D'après Turner, 1970. \n A: très instable ; B : instable ; C : peu instable ; D: neutre ; E : stable ; F : très stable.")
 
+st.markdown("""
+        <div style="text-align: justify;">    
+        Il existe différentes équations pour décrire l'évolution de ces coefficients de dispersion en fonction des facteurs de contrôle. Quatres de ces équations sont présentées ci-après.
+        </div>   
+        <p>
+        </p>
+        """
+    , unsafe_allow_html=True
+)
+
 plot_dispersion()
+
+st.markdown("""
+        <div style="text-align: justify;">    
+        Afin de bien comprendre ce qu'implique ces coefficients, nous allons représenter la dilution du volume émis en fonction de la distance à la source. Pour cela, nous ferons une représentation de ce volume 3D à travers deux coupes: 
+        <ol>
+            <li> une coupe verticale, parallèle à la direction du vent </li>
+            <li> une coupe verticale, perpendiculaire à la direction du vent</li>
+        </ol>
+        </div>   
+        <p>
+        </p>
+        """
+    , unsafe_allow_html=True
+)
+
+coupe_vertical()

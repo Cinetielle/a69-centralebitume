@@ -199,9 +199,10 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     return res
                                            
 def surelevation():
-    global Vs, v, d, Ts, Ta, xmax
-    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", date.iloc[len(date)-10])
-    filtre = (date== pd.to_datetime(date_meteo))
+    global Vs, v, d, Ts, Ta, xmax, Qh
+    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le premier août 2021", value=0, min_value=0, max_value=768, step=1)
+    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/08/01')+datetime.timedelta(days=date_meteo_increment))
+    filtre = (date== pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment))
     meteo_slice = meteo[filtre]
     header = meteo.columns[1:]
     Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
@@ -415,16 +416,15 @@ def plot_dispersion():
 def coupe_vertical():
     global SA
     z = np.arange(0, 1000, 2)
-    MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=1)
+    MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=0)
     if MCD =="Pasquill & Gifford, mode 2":
         i=1
     elif MCD =="ASME 1979, mode 1":
         i = 2
     elif MCD =="Klug 1969, mode 1":
         i=3
- 
- 
-    SA = st.selectbox("Définir la condition de stabilité atmosphérique", ['A', 'AB', 'B', 'BC', 'C', 'CD', 'D', 'E', 'F'], index=6)
+    Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
+    SA = st.selectbox("Définir la condition de stabilité atmosphérique", ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F'], index=6)
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
     surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
@@ -434,28 +434,27 @@ def coupe_vertical():
     newZ = Zx-19-surelevation
     C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(v*sigmay*sigmaz*2*np.pi)
     fig, ax = plt.subplots()
-    f =ax.imshow(np.log10(C), extent=[X.min(), X.max(), Zx.min(), Zx.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral')
-    plt.colorbar(f, ax=ax, orientation='horizontal')
-    
+    f =ax.imshow(np.log10(C), extent=[X.min(), X.max(), Zx.min(), Zx.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral', aspect=X.max()/(2*Zx.max()))
+    plt.colorbar(f, ax=ax, orientation='horizontal').set_label(r'Facteur de dilution en $log_{10}$')
+    ax.set_xlabel("Distance à la cheminée (m)")
+    ax.set_ylabel("Altitude parallèlement \n à la direction du vent")
+   
 
     y = np.arange(-2000, 2000, 2)
     Y, Zy = np.meshgrid(y, z)
-    Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
     ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
     Xy = np.asarray([[Xy]])
-    
     surelevation = Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
     sigma_val = sigma(SA, Xy)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
-    print(Y)
     newZ = Zy-19-surelevation
-    C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(v*sigmay*sigmaz*2*np.pi)
-    #rint(C)
+    C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(sigmay*sigmaz*v*2*np.pi)
     fig2,ax2 = plt.subplots()
-    f2 = ax2.imshow(np.log10(C), extent=[Y.min(), Y.max(), Zy.min(), Zy.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral')
-    plt.colorbar(f2, ax=ax2, orientation='horizontal')
-    
+    f2 = ax2.imshow(np.log10(C), extent=[Y.min(), Y.max(), Zy.min(), Zy.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral', aspect=Y.max()/Zy.max())
+    plt.colorbar(f2, ax=ax2, orientation='horizontal').set_label(r'Facteur de dilution en $log_{10}$')
+    ax2.set_xlabel(f"Distance au centre du panache (m) à {Xy[0, 0]/1000} km du centre d'émission")
+    ax2.set_ylabel("Altitude perpendiculairement \n à la direction du vent.")
     st.pyplot(fig)
     st.pyplot(fig2)
 
@@ -679,3 +678,22 @@ st.markdown("""
 )
 
 coupe_vertical()
+
+st.markdown("""
+            <p>
+            Voici quelques clefs de lecture pour appréhender ces graphiques :
+            <ol>  
+            <li>Dans les modèles ci dessus, l'altitude 0 est celle du pied de la cheminée d'émission. A ce stade, aucune topographie n'y est représenté. </li>
+            <li>De même, il ne figure aucune variation en fonction du temps. Les variables (température, vitesse et direction du vent...) sont supposés stationnaire à l'échelle d'une journée. </li>
+            <li>Le code colorimétrique reflète le degrés de dilution de ce qui a été émis. Ainsi une couleur où le log10 de la concentration vaut:
+            <ul>
+            <li> -3 (rouge brique) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millième de la masse émise à la source en une seconde (ie par la cheminée). </li>
+            <li> -6 (vert) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millionième de la masse émise à la source en une seconde (ie par la cheminée). </li>
+            <li> -9 (bleu) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un milliardième de la masse émise à la source en une seconde (ie par la cheminée). </li>
+            </ul>
+            </li>
+            </ol>
+            </p>
+            """
+    , unsafe_allow_html=True
+)

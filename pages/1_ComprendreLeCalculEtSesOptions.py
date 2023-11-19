@@ -687,9 +687,9 @@ st.markdown("""
             <li>De même, il ne figure aucune variation en fonction du temps. Les variables (température, vitesse et direction du vent...) sont supposés stationnaire à l'échelle d'une journée. </li>
             <li>Le code colorimétrique reflète le degrés de dilution de ce qui a été émis. Ainsi une couleur où le log10 de la concentration vaut:
             <ul>
-            <li> -3 (rouge brique) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millième de la masse émise à la source en une seconde (ie par la cheminée). </li>
-            <li> -6 (vert) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millionième de la masse émise à la source en une seconde (ie par la cheminée). </li>
-            <li> -9 (bleu) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un milliardième de la masse émise à la source en une seconde (ie par la cheminée). </li>
+            <li> -3 (rouge brique) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millième de la masse émise à la source (ie par la cheminée) en une seconde. </li>
+            <li> -6 (vert) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un millionième de la masse émise à la source en une seconde. </li>
+            <li> -9 (bleu) signifique que dans 1 m<sup>3</sup> de cette zone, il y a un milliardième de la masse émise à la source en une seconde. </li>
             </ul>
             </li>
             </ol>

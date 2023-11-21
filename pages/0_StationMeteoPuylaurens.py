@@ -25,6 +25,8 @@ import matplotlib.pyplot as plt
 meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
 date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
 
+#meteo_HR = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';')
+
 def data_explore() -> None:
 
     # set time series

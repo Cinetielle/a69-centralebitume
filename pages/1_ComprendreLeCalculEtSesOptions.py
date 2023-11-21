@@ -232,6 +232,94 @@ def surelevation():
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
 
+def  stability_pasquill(v, mode='JOUR_RSI_fort'):
+    """
+    Parameters
+    ----------
+    v : TYPE
+        wind speed at 10m , m/s
+    mode : TYPE, optional
+        RSI= rayonnement solaire incident
+        'JOUR_RSI_fort', 'JOUR_RSI_modéré', 'JOUR_RSI_faible', 'NUIT_NEBULOSITE_4/8-7/8', 'NUIT_NEBULOSITE_<3/8'
+
+    Returns
+    -------
+    Pasquill stability
+    A : très instable
+    B: instable
+    C: peu instable
+    D: neutre
+    E:stable
+    F:très stable
+    """
+    if v < 2:
+        if mode=='JOUR_RSI_fort':
+            return 'A'
+        elif mode=='JOUR_RSI_modéré':
+            return 'A-B'
+        elif mode=='JOUR_RSI_faible':
+            return 'B'
+        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+            return 'F'
+        elif mode== 'NUIT_NEBULOSITE_<3/8':
+            return 'F'
+        else:
+            print('mode error')
+    elif (v >= 2) & (v < 3):
+        if mode=='JOUR_RSI_fort':
+            return 'A-B'
+        elif mode=='JOUR_RSI_modéré':
+            return 'B'
+        elif mode=='JOUR_RSI_faible':
+            return 'C'
+        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+            return 'E'
+        elif mode== 'NUIT_NEBULOSITE_<3/8':
+            return 'F'
+        else:
+            print('mode error')
+    elif (v >= 3) & (v < 5):
+        if mode=='JOUR_RSI_fort':
+            return 'B'
+        elif mode=='JOUR_RSI_modéré':
+            return 'B-C'
+        elif mode=='JOUR_RSI_faible':
+            return 'C'
+        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+            return 'D'
+        elif mode== 'NUIT_NEBULOSITE_<3/8':
+            return 'E'
+        else:
+            print('mode error')
+    elif (v >= 5) & (v < 6):
+        if mode=='JOUR_RSI_fort':
+            return 'C'
+        elif mode=='JOUR_RSI_modéré':
+            return 'C-D'
+        elif mode=='JOUR_RSI_faible':
+            return 'D'
+        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+            return 'D'
+        elif mode== 'NUIT_NEBULOSITE_<3/8':
+            return 'D'
+        else:
+            print('mode error')
+    elif (v >= 6):
+        if mode=='JOUR_RSI_fort':
+            return 'C'
+        elif mode=='JOUR_RSI_modéré':
+            return 'D'
+        elif mode=='JOUR_RSI_faible':
+            return 'D'
+        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+            return 'D'
+        elif mode== 'NUIT_NEBULOSITE_<3/8':
+            return 'D'
+        else:
+            print('mode error')
+    else:
+        return 'D'
+    
 def sigma(stability, x):
     """
     application restricted to downwind distance < 10km

@@ -22,50 +22,108 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 
-meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
+meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
+meteo.index = pd.to_datetime(meteo.iloc[:, :5])
 
-#meteo_HR = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';')
+
 
 def data_explore() -> None:
 
     # set time series
-    end_date = st.sidebar.date_input('Fin de période', date.iloc[len(date)-1])
-    start_date = st.sidebar.date_input('Début de période', end_date-datetime.timedelta(days=60))
+    end_date = st.sidebar.date_input('Fin de période', meteo.index[-1])
+    start_date = st.sidebar.date_input('Début de période', end_date-datetime.timedelta(days=10))
     
-    filtre = (date>= pd.to_datetime(start_date)) & (date<= pd.to_datetime(end_date))
-    meteo_slice = meteo[filtre]
-    header = meteo.columns[1:]
+    filtre = (meteo.index>= pd.to_datetime(start_date)) & (meteo.index<= pd.to_datetime(end_date))
+    meteo_slice = meteo[filtre].iloc[:, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
+    dt = pd.to_datetime(end_date)-pd.to_datetime(start_date)
+    if (dt > datetime.timedelta(days=10)) & (dt <= datetime.timedelta(days=175)):
+        td = datetime.timedelta(days=1)
+        Tmax = meteo_slice.iloc[:, 0].resample('D').max()
+        Tmin = meteo_slice.iloc[:, 0].resample('D').min()
+        Tmoy = meteo_slice.iloc[:, 0].resample('D').mean()
 
-    choice = ['Température (°C)', 'Précipitation (mm) & Humidité (%)', 'Pression (hPa)', 'Vitesse des vents (m/s)', 'Rose des vents', 'Table des données']
+        Hmax = meteo_slice.iloc[:, 2].resample('D').max()
+        Hmin = meteo_slice.iloc[:, 2].resample('D').min()
+        Hmoy = meteo_slice.iloc[:, 2].resample('D').mean()
+
+        Vmax = meteo_slice.iloc[:, 3].resample('D').max()/3.6
+        Vmin = meteo_slice.iloc[:, 3].resample('D').min()/3.6
+        Vmoy = meteo_slice.iloc[:, 3].resample('D').mean()/3.6
+
+        Pmax = meteo_slice.iloc[:, 6].resample('D').max()
+        Pmin = meteo_slice.iloc[:, 6].resample('D').min()
+        Pmoy = meteo_slice.iloc[:, 6].resample('D').mean()
+
+        Prec = meteo_slice.iloc[:, 8].resample('D').sum()
+        RSI = meteo_slice.iloc[:, 7].resample('D').mean()
+
+    elif (dt > datetime.timedelta(days=175)):
+        td = datetime.timedelta(days=30)
+        Tmax = meteo_slice.iloc[:, 0].resample('m').max()
+        Tmin = meteo_slice.iloc[:, 0].resample('m').min()
+        Tmoy = meteo_slice.iloc[:, 0].resample('m').mean()  
+
+        Hmax = meteo_slice.iloc[:, 2].resample('m').max()
+        Hmin = meteo_slice.iloc[:, 2].resample('m').min()
+        Hmoy = meteo_slice.iloc[:, 2].resample('m').mean()
+
+        Vmax = meteo_slice.iloc[:, 3].resample('m').max()/3.6
+        Vmin = meteo_slice.iloc[:, 3].resample('m').min()/3.6
+        Vmoy = meteo_slice.iloc[:, 3].resample('m').mean()/3.6
+
+        Pmax = meteo_slice.iloc[:, 6].resample('m').max()
+        Pmin = meteo_slice.iloc[:, 6].resample('m').min()
+        Pmoy = meteo_slice.iloc[:, 6].resample('m').mean()
+
+        Prec = meteo_slice.iloc[:, 8].resample('m').sum()
+        RSI = meteo_slice.iloc[:, 7].resample('m').mean()
+
+    else:
+        td = datetime.timedelta(hours=1)
+        Tmax = meteo_slice.iloc[:, 0].resample('H').max()
+        Tmin = meteo_slice.iloc[:, 0].resample('H').min()
+        Tmoy = meteo_slice.iloc[:, 0].resample('H').mean()
+
+        Hmax = meteo_slice.iloc[:, 2].resample('H').max()
+        Hmin = meteo_slice.iloc[:, 2].resample('H').min()
+        Hmoy = meteo_slice.iloc[:, 2].resample('H').mean()
+
+        Vmax = meteo_slice.iloc[:, 3].resample('H').max()/3.6
+        Vmin = meteo_slice.iloc[:, 3].resample('H').min()/3.6
+        Vmoy = meteo_slice.iloc[:, 3].resample('H').mean()/3.6
+
+        Pmax = meteo_slice.iloc[:, 6].resample('H').max()
+        Pmin = meteo_slice.iloc[:, 6].resample('H').min()
+        Pmoy = meteo_slice.iloc[:, 6].resample('H').mean()
+
+        Prec = meteo_slice.iloc[:, 8].resample('H').sum()
+        RSI = meteo_slice.iloc[:, 7].resample('H').mean()
+   
+
+    choice = ['Température (°C)', 'Précipitation (mm) & Humidité (%)', 'Pression (hPa)', 'Vitesse des vents (m/s) & Insolation (W/m2)', 'Rose des vents', 'Table des données']
 
     to_plot = st.sidebar.selectbox("Quelle(s) donnée(s) afficher ?", choice)
 
     if to_plot == 'Température (°C)':
         fig, ax = plt.subplots()
-        ax.plot(date[filtre], meteo_slice['Temp_Moy '], c='k')
-        ax.plot(date[filtre], meteo_slice['T_MEAN'], c='k') 
-        ax.fill_between(date[filtre], meteo_slice['T_LOW'], meteo_slice['T_HIGH'], color='gray', alpha=.5, linewidth=0)
-        ax.fill_between(date[filtre], meteo_slice['Temp_Min'], meteo_slice['Temp_Max'], color='gray', alpha=.5, linewidth=0)
+        ax.fill_between(Tmin.index, Tmin, Tmax, color='gray', alpha=.5, linewidth=0)
+        ax.plot(Tmoy.index, Tmoy, c='k')
         ax.set_xlabel("Date")
         ax.set_ylabel(to_plot)
-        ax.set_xlim(start_date, end_date)
+        ax.set_xlim(Tmin.index.min(), Tmin.index.max())
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         st.pyplot(fig)
 
     elif to_plot == 'Précipitation (mm) & Humidité (%)':
         fig, ax = plt.subplots()
         ax2 = ax.twinx()
-        ax.bar(date[filtre], meteo_slice['RAIN'], color='dodgerblue', alpha=0.5, edgecolor=None, width=datetime.timedelta(days=1))
-        ax.bar(date[filtre], meteo_slice['Precipitation [mm]'], color='dodgerblue', alpha=0.5, edgecolor=None, width=datetime.timedelta(days=1))
-        ax2.fill_between(date[filtre], meteo_slice['Humidite_Min [%]'], meteo_slice['Humidite_Max [%]'], color='gray', alpha=.5, linewidth=0)
-        ax2.plot(date[filtre], meteo_slice['Humidite_Moy [%]'], c='k', alpha=0.25) 
+        ax.bar(Prec.index, Prec, color='dodgerblue', alpha=0.5, edgecolor=None, width=td)
+        ax2.plot(Hmoy.index, Hmoy, c='navy') 
+        ax2.fill_between(Hmax.index, Hmin, Hmax, color='gray', alpha=.5, linewidth=0)
         ax.set_xlabel("Date")
-        ax.set_xlim(start_date, end_date)
-        ax.set_ylim(np.nanmin([np.nanmin(meteo_slice['Precipitation [mm]']), np.nanmin(meteo_slice['RAIN'])]), np.nanmax([np.nanmax(meteo_slice['Precipitation [mm]']), np.nanmax(meteo_slice['RAIN'])]))
-        ax2.set_ylim(np.nanmin(meteo_slice['Humidite_Min [%]']), np.nanmax(meteo_slice['Humidite_Max [%]']))
+        ax.set_xlim(Prec.index.min(), Prec.index.max())
         ax.yaxis.label.set_color('dodgerblue')
-        ax2.yaxis.label.set_color('gray')
+        ax2.yaxis.label.set_color('navy')
         ax.set_ylabel(to_plot.split('&')[0])
         ax2.set_ylabel(to_plot.split('&')[1])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
@@ -73,22 +131,25 @@ def data_explore() -> None:
 
     elif to_plot == 'Pression (hPa)':
         fig, ax = plt.subplots()
-        ax.fill_between(date[filtre], meteo_slice['Pression_Min [hPa]'], meteo_slice['Pression_Max [hPa]'], color='gray', alpha=.5, linewidth=0)
+        ax.fill_between(Pmin.index, Pmin, Pmax, color='gray', alpha=.5, linewidth=0)
+        ax.plot(Pmoy.index, Pmoy, c='k')
         ax.set_xlabel("Date")
-        ax.set_xlim(start_date, end_date)
+        ax.set_xlim(Pmin.index.min(), Pmin.index.max())
         ax.set_ylabel(to_plot)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         st.pyplot(fig)
 
-    elif to_plot == 'Vitesse des vents (m/s)':
+    elif to_plot == 'Vitesse des vents (m/s) & Insolation (W/m2)':
         fig, ax = plt.subplots()
-        ax.fill_between(date[filtre], meteo_slice[header[20]]/3.6, meteo_slice[header[18]]/3.6, color='gray', alpha=.5, linewidth=0)
-        ax.plot(date[filtre], meteo_slice[header[19]]/3.6, c='k')
-        ax.fill_between(date[filtre], meteo_slice[header[20]]/3.6, meteo_slice['HIGH']/3.6, color='gray', alpha=.5, linewidth=0)
-        ax.plot(date[filtre], meteo_slice['AVG_WIND_SPEED']/3.6, c='k')        
-        ax.set_xlim(start_date, end_date)
+        ax2 = ax.twinx()
+        ax.fill_between(Vmin.index, Vmin, Vmax, color='gray', alpha=.5, linewidth=0)
+        ax.plot(Vmoy.index, Vmoy, c='k')  
+        ax2.plot(RSI.index, RSI, c='crimson')  
+        ax.set_xlim(Vmoy.index.min(), Vmoy.index.max())
         ax.set_xlabel("Date")
-        ax.set_ylabel(to_plot)
+        ax2.yaxis.label.set_color('crimson')
+        ax.set_ylabel(to_plot.split('&')[0])
+        ax2.set_ylabel(to_plot.split('&')[1])
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         st.pyplot(fig)
 

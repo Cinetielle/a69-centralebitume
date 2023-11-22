@@ -7,3 +7,4 @@ matplotlib
 scipy
 geopandas
 plotly
+scipy

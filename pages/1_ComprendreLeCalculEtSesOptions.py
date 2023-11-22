@@ -59,11 +59,10 @@ Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
 X, Y = np.meshgrid(vx, vy)
 X_, Y_, Z_ = X-x0, Y-y0, Z-z0
 dist_XY = np.sqrt(X_**2+Y_**2)
-dist_XYZ = np.sqrt(X_**2+Y_**2+Z_**2)
 extent = [X.min(), X.max(), Y.min(), Y.max()]
 
-meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
+meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
+meteo.index = pd.to_datetime(meteo.iloc[:, :5])
 
 def topographie():
     fig, ax = plt.subplots()
@@ -199,22 +198,33 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     return res
                                            
 def surelevation():
-    global Vs, v, d, Ts, Ta, xmax, Qh
-    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le premier août 2021", value=0, min_value=0, max_value=768, step=1)
-    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/08/01')+datetime.timedelta(days=date_meteo_increment))
-    filtre = (date== pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment))
-    meteo_slice = meteo[filtre]
-    header = meteo.columns[1:]
+    global Vs, v, d, Ts, Ta, xmax, Qh, RSI, HR, vVent
+    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=768, step=1)
+    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/03/06')+datetime.timedelta(days=date_meteo_increment))
+    debut_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment)
+    fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment+1)
+
+    filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
+    meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
+    xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
     Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
-    xmax = st.sidebar.slider(r"Choisir la distance maximale à évaluer", value=5000, min_value=1000, max_value=20000, step=10)
     d = 1.35
-    v = meteo_slice[header[19]].iloc[0]/3.6 # vitesse du vent en m/s
-    Pa = (meteo_slice['Pression_Min [hPa]'].iloc[0]+meteo_slice['Pression_Max [hPa]'].iloc[0])/2 # pression atmosphérique en Pa
-    Ta = meteo_slice['Temp_Moy '].iloc[0] # température de l'air en °C
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
+
+    v = meteo_slice.iloc[:, 3].mean()/3.6 # vitesse du vent en m/s
+    Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
+    Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
+    RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
+    HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
+    #vecteur vent
+    vdir = meteo_slice.iloc[:, 5].to_numpy() 
+    vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
+    vVent = meteo_slice.iloc[:, 3]*vdir
+
     Hair = 1940 # enthalpie de l'air à 100% d'humidité relative et 83°C en kJ/kg
     debit_masse_air =(53400*0.94)/3600 #kg/s tel que donné dans le document SPIE
     Qh = Hair*debit_masse_air  #débit de chaleur en kJ/s
+
     x = np.arange(0, xmax, 10)
     briggs = Δh_Briggs(x, Vs, v, d, Ts, Ta)
     Concawes = Δh_Concawes(v, d, Qh)
@@ -232,15 +242,25 @@ def surelevation():
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
 
-def  stability_pasquill(v, mode='JOUR_RSI_fort'):
+def  stability_pasquill(v, RSI, HR, mode='24H'):
     """
+    Définis les conditions suivantes et renvoi la stabilité de Pasquill en conséquence
+    'JOUR_RSI_fort', 'JOUR_RSI_modéré', 'JOUR_RSI_faible', 'NUIT_NEBULOSITE_4/8-7/8', 'NUIT_NEBULOSITE_<3/8'
+
     Parameters
     ----------
-    v : TYPE
+    v : float
         wind speed at 10m , m/s
-    mode : TYPE, optional
-        RSI= rayonnement solaire incident
-        'JOUR_RSI_fort', 'JOUR_RSI_modéré', 'JOUR_RSI_faible', 'NUIT_NEBULOSITE_4/8-7/8', 'NUIT_NEBULOSITE_<3/8'
+    RSI : float
+        RSI= rayonnement solaire incident moyen
+    HR : float
+        humidité relative
+        on fait l'hypothèse que si l'air au sol est sec (< 60 %) la nébuolisté équivaut à 'NUIT_NEBULOSITE_<3/8'
+        sinon la nébulosité équivaut à 'NUIT_NEBULOSITE_4/8-7/8'
+
+    mode : str, optional
+        '24H', '1H', '10M'
+        
 
     Returns
     -------
@@ -252,71 +272,80 @@ def  stability_pasquill(v, mode='JOUR_RSI_fort'):
     E:stable
     F:très stable
     """
+    if mode == "24H":
+        if RSI > 264:
+            RSI='JOUR_RSI_fort'
+        elif (RSI < 90):
+            RSI='JOUR_RSI_faible'
+        else:
+            RSI='JOUR_RSI_modéré'
+    else:
+        if RSI > 472:
+            RSI='JOUR_RSI_fort'
+        elif (RSI < 199) & (RSI > 0):
+            RSI='JOUR_RSI_faible'
+        elif (HR >= 60) & (RSI == 0):
+            RSI='NUIT_NEBULOSITE_<3/8'
+        elif (HR < 60) & (RSI == 0):
+            RSI='NUIT_NEBULOSITE_4/8-7/8'            
+        else:
+            RSI='JOUR_RSI_modéré'
+    
     if v < 2:
-        if mode=='JOUR_RSI_fort':
+        if RSI=='JOUR_RSI_fort':
             return 'A'
-        elif mode=='JOUR_RSI_modéré':
+        elif RSI=='JOUR_RSI_modéré':
             return 'A-B'
-        elif mode=='JOUR_RSI_faible':
+        elif RSI=='JOUR_RSI_faible':
             return 'B'
-        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
             return 'F'
-        elif mode== 'NUIT_NEBULOSITE_<3/8':
+        elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'F'
-        else:
-            print('mode error')
     elif (v >= 2) & (v < 3):
-        if mode=='JOUR_RSI_fort':
+        if RSI=='JOUR_RSI_fort':
             return 'A-B'
-        elif mode=='JOUR_RSI_modéré':
+        elif RSI=='JOUR_RSI_modéré':
             return 'B'
-        elif mode=='JOUR_RSI_faible':
+        elif RSI=='JOUR_RSI_faible':
             return 'C'
-        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
             return 'E'
-        elif mode== 'NUIT_NEBULOSITE_<3/8':
+        elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'F'
-        else:
-            print('mode error')
     elif (v >= 3) & (v < 5):
-        if mode=='JOUR_RSI_fort':
+        if RSI=='JOUR_RSI_fort':
             return 'B'
-        elif mode=='JOUR_RSI_modéré':
+        elif RSI=='JOUR_RSI_modéré':
             return 'B-C'
-        elif mode=='JOUR_RSI_faible':
+        elif RSI=='JOUR_RSI_faible':
             return 'C'
-        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
             return 'D'
-        elif mode== 'NUIT_NEBULOSITE_<3/8':
+        elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'E'
-        else:
-            print('mode error')
     elif (v >= 5) & (v < 6):
-        if mode=='JOUR_RSI_fort':
+        if RSI=='JOUR_RSI_fort':
             return 'C'
-        elif mode=='JOUR_RSI_modéré':
+        elif RSI=='JOUR_RSI_modéré':
             return 'C-D'
-        elif mode=='JOUR_RSI_faible':
+        elif RSI=='JOUR_RSI_faible':
             return 'D'
-        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
             return 'D'
-        elif mode== 'NUIT_NEBULOSITE_<3/8':
+        elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'D'
-        else:
-            print('mode error')
     elif (v >= 6):
-        if mode=='JOUR_RSI_fort':
+        if RSI=='JOUR_RSI_fort':
             return 'C'
-        elif mode=='JOUR_RSI_modéré':
+        elif RSI=='JOUR_RSI_modéré':
             return 'D'
-        elif mode=='JOUR_RSI_faible':
+        elif RSI=='JOUR_RSI_faible':
             return 'D'
-        elif mode=='NUIT_NEBULOSITE_4/8-7/8':
+        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
             return 'D'
-        elif mode== 'NUIT_NEBULOSITE_<3/8':
+        elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'D'
-        else:
-            print('mode error')
     else:
         return 'D'
     
@@ -414,7 +443,7 @@ def sigma(stability, x):
 
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
-    x = np.arange(100, xmax, 10)
+    x = np.linspace(100, xmax, 1000)
     x = x[:, np.newaxis]
     A = sigma('A', x)
     AB = sigma('A-B', x)
@@ -502,8 +531,9 @@ def plot_dispersion():
     st.pyplot(fig2)
 
 def coupe_vertical():
-    global SA
-    z = np.arange(0, 1000, 2)
+    global SA, SA_climatique
+    zmax = st.slider("Choisir l'altitude maximum à représenter :", value=1000, min_value=100, max_value=20000, step=100)
+    z = np.linspace(0, zmax, 500)
     MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=0)
     if MCD =="Pasquill & Gifford, mode 2":
         i=1
@@ -512,7 +542,9 @@ def coupe_vertical():
     elif MCD =="Klug 1969, mode 1":
         i=3
     Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
-    SA = st.selectbox("Définir la condition de stabilité atmosphérique", ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F'], index=6)
+    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
+    liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
+    SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
     surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
@@ -528,7 +560,7 @@ def coupe_vertical():
     ax.set_ylabel("Altitude parallèlement \n à la direction du vent")
    
 
-    y = np.arange(-2000, 2000, 2)
+    y = np.arange(-2000, 2000, 4)
     Y, Zy = np.meshgrid(y, z)
     ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
     Xy = np.asarray([[Xy]])
@@ -546,10 +578,33 @@ def coupe_vertical():
     st.pyplot(fig)
     st.pyplot(fig2)
 
+def carte_stationnaire():
+    C = np.zeros((ny, nx))
+    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    vVent_mean = np.mean(vVent, axis=0)
+    dot_product=X*vVent_mean[0]+Y*vVent_mean[1]
+    magnitudes=v*dist_XY
+    # angle entre la direction du vent et le point (x,y)
+    subtended=np.arccos(dot_product/(magnitudes+1e-15));
+    # distance le long de la direction du vent jusqu'à une ligne perpendiculaire qui intersecte x,y
+    downwind=np.cos(subtended)*dist_XY
+    filtre = np.where(downwind > 0)
+    crosswind=np.sin(subtended)*dist_XY
+    sr = sigma(SA_climatique, downwind)
+    σy =sr[1, 0, filtre[0],filtre[1]]
+    σz =sr[1, 1, filtre[0],filtre[1]]
+    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
+    fig, ax = plt.subplots()
+    contour = np.arange(-15.,-4.)
+    contour = [10**i for i in contour]
+    extent = [X.min()+x0, X.max()+x0, Y.min()+y0, Y.max()+y0]
+    im = ax.contour(C[:, :, 0], contour, extent=extent, cmap='nipy_spectral', origin='lower', norm='log', zorder=1)
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.ax.set_yticklabels(["{:.0e}".format(i) for i in contour])
+    cbar.set_label('Facteur de dilution de la concentration ; le code couleur ne représente pas des seuils sanitaires')
+    st.pyplot(fig)
 
-
-
-st.set_page_config(page_title="Le calcul et ses options", page_icon="📈")
+st.set_page_config(page_title="Le calcul et ses options", page_icon=":waning_gibbous_moon:")
 st.markdown("# Le calcul et ses options")
 st.sidebar.header("Paramètres")
 st.markdown(
@@ -659,7 +714,6 @@ st.markdown(
     #### Les données météorologiques
     <p>
     Les données météorologiques passées sont présentées dans une <a href='StationMeteoPuylaurens' target='_self'>page dédiée</a>.
-    Nous retiendrons qu'il existe des données moyennes journalières et des données avec un pas de 5 minutes.
     </p>
     <p>
     Il est également prévu l'intégration des prévisions météorologiques de Puylaurens.
@@ -740,7 +794,55 @@ st.markdown("""
 st.image(image_DP3, caption="Stabilité atmosphérique : classification de Pasquill. D'après Turner, 1970. \n A: très instable ; B : instable ; C : peu instable ; D: neutre ; E : stable ; F : très stable.")
 
 st.markdown("""
-        <div style="text-align: justify;">    
+        <div style="text-align: justify;">     
+        Sur la base des informations climatiques, nous définissons les classes de Pasquill comme suit:
+        </div>  
+        <ol>
+            <li>Si nous cherchons à voir le comportement moyen sur 24 heures : </li>
+            <ul>
+            <li>
+            Nous considérons que l'insolation solaire est faible ('DAY'>'SLIGHT') si sa moyenne est inférieure à 90 W.m<sup>2</sup>
+            </li>
+            <li>
+            Nous considérons que l'insolation solaire est forte ('DAY'>'STRONG') si sa moyenne est supérieur à 264 W.m<sup>2</sup>
+            </li>
+            <li>
+            Nous considérons que l'insolation solaire est moyenne ('DAY'>'MODERATE') sinon
+            </li>
+            </ul>
+            <li>Si nous cherchons à voir le comportement précis sur une journée (pas inférieur à l'heure), afin de considéré précisément les effets climatiques sur les périodes de fonctionnement de la centrale: </li>
+            <ul>
+            <li>
+            Nous considérons que l'insolation solaire est faible ('DAY'>'SLIGHT') si sa moyenne est inférieure à 199 W.m<sup>2</sup>
+            </li>
+            <li>
+            Nous considérons que l'insolation solaire est forte ('DAY'>'STRONG') si sa moyenne est supérieur à 472 W.m<sup>2</sup>
+            </li>
+            <li>
+            Nous considérons que la nébulosité (couverture nuageuse) est forte ('NIGHT'>' =< 3/8 CLOUD') si l'humidité relative moyenne est supérieur à 60%
+            </li>
+            <li>
+            Nous considérons que la nébulosité est faible ('NIGHT'>'Thinly Overcast or >= 4/8 LOW CLOUD') si l'humidité relative moyenne est inférieure à 60%
+            </li>
+            <li>
+            Nous considérons que l'insolation solaire est moyenne ('DAY'>'MODERATE') sinon
+            </li>
+            </ul>            
+        </ol>
+        <div style="text-align: justify;">     
+        Si nous n'avons pas les informations nécessaires nous utilisons la classe 'D', tel que conseillé par Turner, 1970.
+        </div>        
+         
+        <p>
+        </p>
+        """
+    , unsafe_allow_html=True
+)
+
+
+
+st.markdown("""
+        <div style="text-align: justify;">     
         Il existe différentes équations pour décrire l'évolution de ces coefficients de dispersion en fonction des facteurs de contrôle. Quatres de ces équations sont présentées ci-après.
         </div>   
         <p>
@@ -785,3 +887,25 @@ st.markdown("""
             """
     , unsafe_allow_html=True
 )
+
+st.markdown("""
+        ## Calcul stationnaire ou par bouffée ?
+    
+        <div style="text-align: justify;">    
+        Comme nous l'avons déjà mentionné, deux manières de calculer sont possibles:
+            <li> En utilisant un modèle de panache gaussien stationnaire </li>
+            <li> En utilisant un modèle par bouffées </li>
+
+        Dans cette partie nous allons comparer les deux résultats sur la journée sélectionnée. Cette comparaison n'est possible que grace aux données météorologiques aux pas de 5 minutes que nous avons pu récupérer.
+        </div>   
+            
+        ### Le calcul stationnaire
+            
+        Le calcul stationnaire repose sur les valeurs météorologiques moyennes de la journée. Elle suppose leur variation faible.
+
+        Le plus difficile concerne la valeur moyenne de la direction du vent (moyenne d'une valeur circulaire : 359° est plus proche de 1° que de 350°).
+        """
+    , unsafe_allow_html=True
+)
+
+carte_stationnaire()

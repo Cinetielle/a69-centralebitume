@@ -22,6 +22,7 @@ from streamlit.hello.utils import show_code
 
 import matplotlib.pyplot as plt
 from PIL import Image
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
@@ -29,7 +30,7 @@ image_DP3 = Image.open('./im/Turner1970.png')
 
 #coordonnée de la sortie de cheminée
 #-5 mètre pour intégrer le décaissement
-x0, y0, z0 = 623208.070, 6273468.332, 230-5+18.56
+x0, y0, z0 = 623208.070, 6273468.332, 230-5+19
 
 villes = {'Revel': [619399.490,6262672.707],
          'Puylaurens':[620266.862,6275241.681],
@@ -199,7 +200,8 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
                                            
 def surelevation():
     global Vs, v, d, Ts, Ta, xmax, Qh, RSI, HR, vVent
-    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=768, step=1)
+    td = meteo.index[-1]-meteo.index[0]
+    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=td.days, step=1)
     date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/03/06')+datetime.timedelta(days=date_meteo_increment))
     debut_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment)
     fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment+1)
@@ -215,11 +217,13 @@ def surelevation():
     Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
     Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
     RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
+    vérifier insolation
     HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
     #vecteur vent
-    vdir = meteo_slice.iloc[:, 5].to_numpy() 
+    vdir = meteo_slice.iloc[:, 4].to_numpy()
     vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
-    vVent = meteo_slice.iloc[:, 3]*vdir
+    
+    vVent = (meteo_slice.iloc[:, 3].to_numpy()[:, np.newaxis]/3.6)*vVent
 
     Hair = 1940 # enthalpie de l'air à 100% d'humidité relative et 83°C en kJ/kg
     debit_masse_air =(53400*0.94)/3600 #kg/s tel que donné dans le document SPIE
@@ -579,10 +583,20 @@ def coupe_vertical():
     st.pyplot(fig2)
 
 def carte_stationnaire():
+    vVent_mean = np.nanmean(vVent, axis=0)
+    v = np.sqrt(np.sum(vVent_mean**2))
+
+    #fig, ax = plt.subplots()
+    #ax.scatter(vVent[:, 0], vVent[:, 1], c=np.sqrt(np.sum(vVent**2, axis=1)), cmap='jet')
+    #ax.scatter(vVent_mean[0], vVent_mean[1], c='k')
+    #ax.set_xlim(-6, 6)
+    #ax.set_ylim(-6, 6)
+    #st.pyplot(fig)
+
+    
     C = np.zeros((ny, nx))
     Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
-    vVent_mean = np.mean(vVent, axis=0)
-    dot_product=X*vVent_mean[0]+Y*vVent_mean[1]
+    dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
     subtended=np.arccos(dot_product/(magnitudes+1e-15));
@@ -594,14 +608,60 @@ def carte_stationnaire():
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
-    fig, ax = plt.subplots()
-    contour = np.arange(-15.,-4.)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    contour = np.arange(-15.,-2.)
     contour = [10**i for i in contour]
-    extent = [X.min()+x0, X.max()+x0, Y.min()+y0, Y.max()+y0]
-    im = ax.contour(C[:, :, 0], contour, extent=extent, cmap='nipy_spectral', origin='lower', norm='log', zorder=1)
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.ax.set_yticklabels(["{:.0e}".format(i) for i in contour])
-    cbar.set_label('Facteur de dilution de la concentration ; le code couleur ne représente pas des seuils sanitaires')
+    print(contour)
+    ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
+    im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
+    ax.scatter(x0, y0, c='crimson', zorder=3)
+    for n, l in villes.items():
+        ax.scatter(l[0], l[1], c='w', zorder=2)
+        ax.text(l[0], l[1], n, zorder=3, fontsize=10)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("top", size="7%", pad="10%")
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+    cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
+    st.pyplot(fig)
+
+def carte_bouffee():
+    vVent_mean = np.nanmean(vVent, axis=0)
+    v = np.sqrt(np.sum(vVent_mean**2))
+
+    #fig, ax = plt.subplots()
+    #ax.scatter(vVent[:, 0], vVent[:, 1], c=np.sqrt(np.sum(vVent**2, axis=1)), cmap='jet')
+    #ax.scatter(vVent_mean[0], vVent_mean[1], c='k')
+    #ax.set_xlim(-6, 6)
+    #ax.set_ylim(-6, 6)
+    #st.pyplot(fig)
+
+    C = np.zeros((ny, nx, 24))
+    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
+    magnitudes=v*dist_XY
+    # angle entre la direction du vent et le point (x,y)
+    subtended=np.arccos(dot_product/(magnitudes+1e-15));
+    # distance le long de la direction du vent jusqu'à une ligne perpendiculaire qui intersecte x,y
+    downwind=np.cos(subtended)*dist_XY
+    filtre = np.where(downwind > 0)
+    crosswind=np.sin(subtended)*dist_XY
+    sr = sigma(SA_climatique, downwind)
+    σy =sr[1, 0, filtre[0],filtre[1]]
+    σz =sr[1, 1, filtre[0],filtre[1]]
+    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    contour = np.arange(-15.,-2.)
+    contour = [10**i for i in contour]
+    ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
+    im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
+    ax.scatter(x0, y0, c='crimson', zorder=3)
+    for n, l in villes.items():
+        ax.scatter(l[0], l[1], c='w', zorder=2)
+        ax.text(l[0], l[1], n, zorder=3, fontsize=10)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("top", size="7%", pad="10%")
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+    cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
     st.pyplot(fig)
 
 st.set_page_config(page_title="Le calcul et ses options", page_icon=":waning_gibbous_moon:")
@@ -902,8 +962,6 @@ st.markdown("""
         ### Le calcul stationnaire
             
         Le calcul stationnaire repose sur les valeurs météorologiques moyennes de la journée. Elle suppose leur variation faible.
-
-        Le plus difficile concerne la valeur moyenne de la direction du vent (moyenne d'une valeur circulaire : 359° est plus proche de 1° que de 350°).
         """
     , unsafe_allow_html=True
 )

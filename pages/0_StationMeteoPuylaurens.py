@@ -229,7 +229,7 @@ def data_explore():
     vdir3 = meteo_slice.loc[(v <5) & (v >=3), 'Direction vents [°]']
     vdir4 = meteo_slice.loc[(v <6) & (v >=5) , 'Direction vents [°]']
     vdir5 = meteo_slice.loc[v >=6, 'Direction vents [°]']
-    
+
     if (dt > datetime.timedelta(days=10)) & (dt <= datetime.timedelta(days=175)):
         td = datetime.timedelta(days=1)
         Tmax = meteo_slice.iloc[:, 0].resample('D').max()

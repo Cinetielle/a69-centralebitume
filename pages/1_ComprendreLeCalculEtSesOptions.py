@@ -203,9 +203,10 @@ def surelevation():
     td = meteo.index[-1]-meteo.index[0]
     date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=td.days, step=1)
     date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/03/06')+datetime.timedelta(days=date_meteo_increment))
-    debut_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment)
-    fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=date_meteo_increment+1)
+    debut_jour = pd.to_datetime(date_meteo)
+    fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=1)
 
+    print(debut_jour, fin_jour)
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
     xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
@@ -217,8 +218,8 @@ def surelevation():
     Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
     Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
     RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
-    vérifier insolation
     HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
+    print(meteo_slice)
     #vecteur vent
     vdir = meteo_slice.iloc[:, 4].to_numpy()
     vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
@@ -351,6 +352,7 @@ def  stability_pasquill(v, RSI, HR, mode='24H'):
         elif RSI== 'NUIT_NEBULOSITE_<3/8':
             return 'D'
     else:
+        print('Pasquill Stability error')
         return 'D'
     
 def sigma(stability, x):
@@ -593,7 +595,6 @@ def carte_stationnaire():
     #ax.set_ylim(-6, 6)
     #st.pyplot(fig)
 
-    
     C = np.zeros((ny, nx))
     Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
@@ -608,10 +609,10 @@ def carte_stationnaire():
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
+    print(C)
     fig, ax = plt.subplots(figsize=(10, 10))
     contour = np.arange(-15.,-2.)
     contour = [10**i for i in contour]
-    print(contour)
     ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
     im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
     ax.scatter(x0, y0, c='crimson', zorder=3)

@@ -18,13 +18,14 @@ from PIL import Image
 
 LOGGER = get_logger(__name__)
 
-image_DP = Image.open('./im/Gaussian_Plume_fr.png')
+image_DP = Image.open('./im/logo-puylaurens-citoyens-deroutes-color-fond-blanc.png')
 
 def run():
     st.set_page_config(
         page_title="Usines à bitume - A69",
         page_icon="👋",
     )
+    st.image(image_DP)
 
     st.write("# Etudes d'impacts des centrales d'enrobage à bitume de l'A69")
 
@@ -32,18 +33,23 @@ def run():
 
     st.markdown(
         """
-        L'objet de ce site web est de quantifier objectivement les impacts des émissions des cheminées des centrales d'enrobage à chaud prévu sur les sites de Puylaurens et Villeneuve-lès-lavaur. 
-    
-        Des informations complémentaires peuvent-être trouvées  [en suivant ce lien](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique).
+        L'objet de ce site web est de quantifier objectivement et en totale transprence les impacts des émissions volatiles des cheminées des centrales d'enrobage à chaud prévu sur le site de Puylaurens. 
 
-        Des modèles HYSPLIT peuvent-être lancés en ligne [ici](https://www.ready.noaa.gov/hypub-bin/dispasrc.pl) (site en anglais). 
-    
-        Le type de modèle utilisé ici est le suivant :
-    """
-    )
+        Ce site est composé comme suit:
 
-    st.image(image_DP, caption="Diagramme représentant une dispersion gaussienne d'un panache de fumée. Wikipedia common.")
+        <ol>
+        <li> Une page décrivant les données météorologiques de Puylaurens, préalable indispensable aux modélisations, (en chantier)</li>
+        <li> Une page décrivant le calcul effectué et les options disponibles, (en chantier)</li>
+        <li> Une page décrivant les produits émis par les centrales à bitume à chaud et leurs potentiels impact sur la santé, (à construire) </li>
+        <li> Une page décrivant l'exposition cartographique aux produits émis par la centrale en fonction des conditions météo passées, (à construire)</li>
+        <li> Une page décrivant l'exposition de votre domicile aux produits émis par la centrale en fonction des conditions météo passées, (à construire)</li>
+        <li> Une page décrivant l'exposition cartographique aux produits émis par la centrale en fonction des conditions météo futures, (à construire)</li>
+        <li> Une page décrivant l'exposition de votre domicile aux produits émis par la centrale en fonction des conditions météo futures. (à construire)</li>
+        </ol>
 
-
+        Ce site est réalisé par Citoyens déroutés, un collectif du territoire Puylaurentais qui souhaite s'informer, informer et protéger.
+    """, unsafe_allow_html=True
+    )    
+        
 if __name__ == "__main__":
     run()

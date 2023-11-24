@@ -43,7 +43,29 @@ def data_explore() -> None:
             Distance = Distance/1000
             st.write('Vous êtes à ', Distance , ' km de la centrale à bitume de Puylaurens')
             
-        m = folium.Map(location=[location['lat'],location['lon']], zoom_start=16)
+        delta_longi=abs(CoordCentraleLon-float(location['lon']))
+        delta_lat=abs(CoordCentraleLat-float(location['lat']))
+        max_delta=max(delta_longi,delta_lat)
+
+        if max_delta<0.005: zoom_lvl=16
+        elif max_delta<0.011:zoom_lvl=15
+        elif max_delta<0.022:zoom_lvl=14
+        elif max_delta<0.044:zoom_lvl=13
+        elif max_delta<0.088:zoom_lvl=12
+        elif max_delta<0.176:zoom_lvl=11
+        elif max_delta<0.352:zoom_lvl=10
+        elif max_delta<0.703:zoom_lvl=9
+        elif max_delta<1.406:zoom_lvl=8
+        elif max_delta<2.813:zoom_lvl=7
+        elif max_delta<5.625:zoom_lvl=6
+        elif max_delta<11.25:zoom_lvl=5
+        elif max_delta<22.5:zoom_lvl=4
+        elif max_delta<45:zoom_lvl=3
+        elif max_delta<90:zoom_lvl=2
+        elif max_delta<180:zoom_lvl=1
+        else: zoom_lvl=0
+ 
+        m = folium.Map(location=[location['lat'],location['lon']], zoom_start=zoom_lvl)
 
         IconCentrale = folium.Icon(icon="house", icon_color="black", color="black", prefix="fa")
         folium.Marker([location['lat'],location['lon']], popup="Domicile", tooltip="Domicile").add_to(m)

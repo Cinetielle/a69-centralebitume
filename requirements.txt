@@ -2,7 +2,6 @@ altair
 folium
 geopandas
 geopy
-math
 matplotlib
 numpy
 pandas

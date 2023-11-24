@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import Any
-import math
+import numpy as math
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
@@ -32,9 +32,9 @@ def data_explore() -> None:
         app = Nominatim(user_agent="tutorial")
         location = app.geocode(Adresse_lettre).raw
 
-        Distance = math.acos(math.sin(math.radians(CoordCentraleLat))*math.sin(math.radians(float(location['lat'])))+
-                             math.cos(math.radians(CoordCentraleLat))*math.cos(math.radians(float(location['lat'])))*
-                             math.cos(math.radians(CoordCentraleLon-float(location['lon']))))*6371
+        Distance = math.arccos(math.sin(math.radians(CoordCentraleLat))*math.sin(math.radians(float(location['lat'])))+
+                               math.cos(math.radians(CoordCentraleLat))*math.cos(math.radians(float(location['lat'])))*
+                               math.cos(math.radians(CoordCentraleLon-float(location['lon']))))*6371
         
         Distance = round (Distance*1000)
         if Distance < 1000:

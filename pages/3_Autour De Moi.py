@@ -14,7 +14,6 @@
 
 from typing import Any
 import math
-import numpy as np
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
@@ -39,10 +38,10 @@ def data_explore() -> None:
         
         Distance = round (Distance*1000)
         if Distance < 1000:
-            st.write('Vous êtes à ', Distance , ' m de la centrale à bitume')
+            st.write('Vous êtes à ', Distance , ' m de la centrale à bitume de Puylaurens')
         else:
             Distance = Distance/1000
-            st.write('Vous êtes à ', Distance , ' km de la centrale à bitume')
+            st.write('Vous êtes à ', Distance , ' km de la centrale à bitume de Puylaurens')
             
         m = folium.Map(location=[location['lat'],location['lon']], zoom_start=16)
 
@@ -64,13 +63,7 @@ def data_explore() -> None:
     elif TimeVision == 'Prévisions':
         st.write(TimeVision)
         
-    # Streamlit widgets automatically run the script from top to bottom. Since
-    # this button is not connected to any other logic, it just causes a plain
-    # rerun.
-    st.button("Re-run")
-
-
-st.set_page_config(page_title="Les données", page_icon="")
+st.set_page_config(page_title="Ma situation", page_icon="")
 st.markdown("# Impacts de la centrale à bitume sur une adresse précise")
 st.sidebar.header("Paramètres")
 st.markdown(

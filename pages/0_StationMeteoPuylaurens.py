@@ -428,7 +428,9 @@ st.markdown(
 
 data_overview()
 
-plot_for_pasquill()
+visu = st.checkbox("Voir les graphiques sur l'insolation (utiles à la définition des critères de Pasquill)")
+if visu :
+    plot_for_pasquill()
 
 st.markdown(
     """

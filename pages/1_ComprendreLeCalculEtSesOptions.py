@@ -23,10 +23,16 @@ from streamlit.hello.utils import show_code
 import matplotlib.pyplot as plt
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import folium
+from streamlit_folium import st_folium
+from pyproj import Transformer
 
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
 image_DP3 = Image.open('./im/Turner1970.png')
+
+RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
+WGS84_to_RGF93 = Transformer.from_crs('4326', '2154', always_xy=True)
 
 #coordonnée de la sortie de cheminée
 #-5 mètre pour intégrer le décaissement
@@ -206,7 +212,6 @@ def surelevation():
     debut_jour = pd.to_datetime(date_meteo)
     fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=1)
 
-    print(debut_jour, fin_jour)
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
     xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
@@ -219,7 +224,7 @@ def surelevation():
     Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
     RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
     HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
-    print(meteo_slice)
+
     #vecteur vent
     vdir = meteo_slice.iloc[:, 4].to_numpy()
     vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
@@ -609,7 +614,6 @@ def carte_stationnaire():
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
-    print(C)
     fig, ax = plt.subplots(figsize=(10, 10))
     contour = np.arange(-15.,-2.)
     contour = [10**i for i in contour]
@@ -624,6 +628,14 @@ def carte_stationnaire():
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
     cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
     st.pyplot(fig)
+    return np.nanmax(C)
+
+def map_folium_stationnaire():
+    lon, lat = RGF93_to_WGS84.transform(xx=x0, yy=y0)
+    m = folium.Map(location=[lat, lon])
+    IconCentrale = folium.Icon(icon="house", icon_color="black", color="black", prefix="fa")
+    folium.Marker([lat, lon], popup="Centrale à bitume", tooltip="Centrale à bitume", icon=IconCentrale).add_to(m)
+    st_map = st_folium(m, use_container_width=True)
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)
@@ -683,7 +695,7 @@ st.markdown(
     """  
     <div style="text-align: justify;">
     <p>
-    Il a été construit sur la base du support de cours (<a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">Introduction</a>, <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dynamique.pdf">Dynamique</a> et <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dispersion.pdf">Dispersion</a> ) du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations. La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives. Le lecteur intéressé (et anglophone) trouvera également la lecture de <a href="https://drive.google.com/file/d/1_LbkRy5sfpjzgBUT1e8S5dCJ5hFHkWdL/view?usp=sharing">cet ouvrage</a> intéressant.
+    Il a été construit sur la base du support de cours du professeur <a href="http://www.christianseigneur.fr/Accueil/">Christian Seigneur</a> du <a href="https://www.cerea-lab.fr">CEREA</a>, auquel il est possible de se référer pour plus d'informations (<a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation_2010-2011/SGE-Modelisation-Introduction.pdf">Introduction</a>, <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dynamique.pdf">Dynamique</a> et <a href="http://cerea.enpc.fr/fich/support_cours/SGE_M2_modelisation/SGE-Modelisation-Dispersion.pdf">Dispersion</a>). La page <a href="https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_de_la_dispersion_atmosph%C3%A9rique">wikipedia</a> pose également quelques éléments de réponses instructives. Le lecteur intéressé (et anglophone) trouvera également la lecture de <a href="https://drive.google.com/file/d/1_LbkRy5sfpjzgBUT1e8S5dCJ5hFHkWdL/view?usp=sharing">cet ouvrage</a> intéressant.
     </p>
 
     <p>
@@ -967,4 +979,13 @@ st.markdown("""
     , unsafe_allow_html=True
 )
 
-carte_stationnaire()
+min_dilution = carte_stationnaire()
+map_folium_stationnaire()
+
+st.markdown("""
+        ### Le calcul par bouffée
+            
+        Le calcul stationnaire repose sur les valeurs météorologiques moyennes de la journée. Elle suppose leur variation faible.
+        """
+    , unsafe_allow_html=True
+)

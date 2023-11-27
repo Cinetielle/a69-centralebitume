@@ -215,7 +215,7 @@ def surelevation():
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
     xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
-    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    Vs = st.sidebar.slider(r"Choisir la vitesse $m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
     d = 1.35
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
 

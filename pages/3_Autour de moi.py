@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import Any
-import numpy as math
+import numpy
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
@@ -21,9 +21,19 @@ import datetime
 import folium
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
+from PIL import Image
+
+LegendMap = Image.open('./im/mapLegend.png')
+
 
 def data_explore() -> None:
-    CoordCentraleLat=43.556417403968226;    CoordCentraleLon= 2.050626971845913
+    Earth_rad = 6371
+    DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
+
+    DataGPS = DataGPS.astype({"Lat":"float"})
+    DataGPS = DataGPS.astype({"Longi":"float"})
+    CoordCentraleLat = DataGPS.Lat[0]
+    CoordCentraleLon = DataGPS.Longi[0]
 
     Adresse_lettre = st.text_input('',value="", type="default", placeholder="Votre Adresse", disabled=False, label_visibility="visible")
     if Adresse_lettre=='':
@@ -31,10 +41,10 @@ def data_explore() -> None:
     else: 
         app = Nominatim(user_agent="tutorial")
         location = app.geocode(Adresse_lettre).raw
-
-        Distance = math.arccos(math.sin(math.radians(CoordCentraleLat))*math.sin(math.radians(float(location['lat'])))+
-                               math.cos(math.radians(CoordCentraleLat))*math.cos(math.radians(float(location['lat'])))*
-                               math.cos(math.radians(CoordCentraleLon-float(location['lon']))))*6371
+        
+        Distance = numpy.arccos(numpy.sin(numpy.radians(CoordCentraleLat))*numpy.sin(numpy.radians(float(location['lat'])))+
+                                numpy.cos(numpy.radians(CoordCentraleLat))*numpy.cos(numpy.radians(float(location['lat'])))*
+                                numpy.cos(numpy.radians(CoordCentraleLon-float(location['lon']))))*Earth_rad
         
         Distance = round (Distance*1000)
         if Distance < 1000:
@@ -65,7 +75,14 @@ def data_explore() -> None:
         elif max_delta<180:zoom_lvl=1
         else: zoom_lvl=0
  
-        m = folium.Map(location=[location['lat'],location['lon']], zoom_start=zoom_lvl)
+        ToggleSat = st.toggle('Vue carte / Vue satellite')
+        if ToggleSat:
+            MapTiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'"
+        else:
+            MapTiles='https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
+
+        m = folium.Map(location=[location['lat'],location['lon']], zoom_start=zoom_lvl, tiles="OpenStreetMap")
+        m._children['openstreetmap'].tiles=MapTiles
 
         IconCentrale = folium.Icon(icon="house", icon_color="black", color="black", prefix="fa")
         folium.Marker([location['lat'],location['lon']], popup="Domicile", tooltip="Domicile").add_to(m)
@@ -84,6 +101,15 @@ def data_explore() -> None:
         st.write(TimeVision)
     elif TimeVision == 'Prévisions':
         st.write(TimeVision)
+
+    st.title('Informations complémentaires')
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("")
+    with col2:
+        st.image(LegendMap, caption="Légende des différentes routes affichées",width=350)
+    with col3:
+        st.write("")
         
 st.set_page_config(page_title="Ma situation", page_icon="")
 st.markdown("# Impacts de la centrale à bitume sur une adresse précise")

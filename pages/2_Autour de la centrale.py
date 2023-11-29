@@ -21,11 +21,14 @@ import datetime
 import folium
 from streamlit_folium import st_folium
 from PIL import Image
+from bs4 import BeautifulSoup
+import requests
 
 LegendMap = Image.open('./im/mapLegend.png')
 
 def data_explore() -> None:
     Earth_rad = 6371
+    Distance = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=10.0, step=0.01)
     TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
     if TimeVision == 'Historique':
         meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
@@ -35,7 +38,77 @@ def data_explore() -> None:
     elif TimeVision == 'Temps réel':
         st.write(TimeVision)
     elif TimeVision == 'Prévisions':
-        st.write(TimeVision)
+
+        url_weather = "http://www.infoclimat.fr/public-api/gfs/xml?_ll=43.57202,2.01227&_auth=VE4FElEvUnBWe1BnBXMGL1c%2FU2YAdlJ1C3dQMw5gXiNTNVU2UTABY1U4B3oOIQQyByoGZlxiCTMKawpqD30AfFQ1BWhROlI0VjBQNwU3Bi1Xe1MuAD5SdQt3UDYOY140Uy5VMFE7AX1VOwdsDjcELgc8BmZcfAkuCmgKag9iAGJUNQVkUTVSMVY8UDEFKgYtV2JTNgA5Um0LaVBhDjBePFMxVTdRYQFgVTgHYw4gBDYHPQZjXGEJMApgCmUPZQB8VCgFGFFBUi1WeVBwBWAGdFd5U2YAYVI%2B&_c=2154afe7f27ed3dd1101e78462166290"
+        response = requests.get(url_weather)
+        HTML_content = BeautifulSoup(response.content, 'html.parser')
+        Table = HTML_content.findAll('echeance')
+
+        DayMenu=[i for i in range(70)]; nb_day =0
+        DataMeteo = pd.DataFrame( columns=['Jour','Temperature [°C]','Humidité [%]','Pression [Hpa]','Vitesse vent [km/h]', 'Direction vent [°]', 'Nébulosité [%]'])
+
+        for cell in Table:
+            print (str(cell))
+            #jour - heure
+            Day = str(cell)
+            PatternDbt=' timestamp="'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('UTC">')
+            DayMenu[nb_day] = Day[result_dbt+len(PatternDbt):result_fin-10]
+            Date = Day[result_dbt+len(PatternDbt):result_fin-1]
+            #Température
+            PatternDbt='<temperature><level val="2m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level><level val="sol">')
+            Temp = float(Day[result_dbt+len(PatternDbt):result_fin])-273.15
+            #Pression
+            PatternDbt='<level val="niveau_de_la_mer">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></pression>')
+            Pression = float(Day[result_dbt+len(PatternDbt):result_fin])/100
+            #Humidité
+            PatternDbt='<humidite><level val="2m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></humidite>')
+            Humid = float(Day[result_dbt+len(PatternDbt):result_fin])
+            #V_Vent
+            PatternDbt='<vent_moyen><level val="10m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></vent_moyen>')
+            V_vent = float(Day[result_dbt+len(PatternDbt):result_fin])
+            #Dir_Vent
+            PatternDbt='</vent_rafales><vent_direction><level val="10m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></vent_direction>')
+            Dir_Vent = float(Day[result_dbt+len(PatternDbt):result_fin])%360
+            #Nebulosité
+            PatternDbt='</level><level val="totale">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></nebulosite>')
+            Nebul = float(Day[result_dbt+len(PatternDbt):result_fin])
+            
+            NvelleLigne =  {'Jour':Date,
+                            'Temperature [°C]':Temp,
+                            'Humidité [%]':Humid,
+                            'Pression [Hpa]':Pression,
+                            'Vitesse vent [km/h]':V_vent,
+                            'Direction vent [°]':Dir_Vent,
+                            'Nébulosité [%]':Nebul}
+            
+            DataMeteo = pd.concat([DataMeteo, pd.DataFrame([NvelleLigne])], ignore_index=True)
+
+            nb_day=nb_day+1;
+
+        for i in range(len(DayMenu)):
+            if i>=nb_day:   
+                DayMenu.pop(len(DayMenu)-1)
+
+        DayMenuset = set(DayMenu)
+        DayMenu=list(DayMenuset)
+        DayMenu.sort()
+
+        st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu)
+        st.sidebar.write('Prévisions météo issues du site: https://www.infoclimat.fr/')
 
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 
@@ -46,7 +119,6 @@ def data_explore() -> None:
     CoordCentraleLat = interestingRow["Lat"]
     CoordCentraleLon = interestingRow["Longi"]
 
-    Distance = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=10.0, step=0.01)
     max_delta =  Distance/ (numpy.pi * Earth_rad*2 / 360)
 
     if max_delta<0.005: zoom_lvl=16
@@ -125,9 +197,9 @@ def data_explore() -> None:
     folium.map.LayerControl('topleft', collapsed= False).add_to(m) 
     st_data = st_folium(m, width=725, height=725)
 
-    TablePopulation = pd.DataFrame([{"Population concernée":'',"Effectif":''}])
-    
-    if Ecole_Groupe.show==1:#condition to rework
+    TablePopulation = pd.DataFrame(columns=['Population concernée', 'Effectif'])
+     
+    if Ecole_effectif>0:#condition to rework
         NvelleLigne = {"Population concernée": "Elèves","Effectif":Ecole_effectif}
         TablePopulation = pd.concat([TablePopulation, pd.DataFrame([NvelleLigne])], ignore_index=True)
 
@@ -146,10 +218,6 @@ def data_explore() -> None:
         st.image(LegendMap, caption="Légende des différentes routes affichées",width=350)
     with col3:
         st.write("")
-
-    
-
-    
 
 st.set_page_config(page_title="Autour de la centrale", page_icon="")
 st.markdown("# Impacts de la centrale à bitume pour un rayon précis")

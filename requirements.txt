@@ -1,4 +1,5 @@
 altair
+beautifulsoup4
 folium
 geopandas
 geopy
@@ -7,6 +8,7 @@ numpy
 pandas
 plotly
 pydeck
+requests
 scipy
 streamlit
 streamlit-folium

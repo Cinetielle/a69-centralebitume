@@ -22,6 +22,8 @@ import folium
 from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
 from PIL import Image
+from bs4 import BeautifulSoup
+import requests
 
 LegendMap = Image.open('./im/mapLegend.png')
 
@@ -100,7 +102,78 @@ def data_explore() -> None:
     elif TimeVision == 'Temps réel':
         st.write(TimeVision)
     elif TimeVision == 'Prévisions':
-        st.write(TimeVision)
+        
+        url_weather = "http://www.infoclimat.fr/public-api/gfs/xml?_ll=43.57202,2.01227&_auth=VE4FElEvUnBWe1BnBXMGL1c%2FU2YAdlJ1C3dQMw5gXiNTNVU2UTABY1U4B3oOIQQyByoGZlxiCTMKawpqD30AfFQ1BWhROlI0VjBQNwU3Bi1Xe1MuAD5SdQt3UDYOY140Uy5VMFE7AX1VOwdsDjcELgc8BmZcfAkuCmgKag9iAGJUNQVkUTVSMVY8UDEFKgYtV2JTNgA5Um0LaVBhDjBePFMxVTdRYQFgVTgHYw4gBDYHPQZjXGEJMApgCmUPZQB8VCgFGFFBUi1WeVBwBWAGdFd5U2YAYVI%2B&_c=2154afe7f27ed3dd1101e78462166290"
+        response = requests.get(url_weather)
+        HTML_content = BeautifulSoup(response.content, 'html.parser')
+        Table = HTML_content.findAll('echeance')
+
+        DayMenu=[i for i in range(70)]; nb_day =0
+        DataMeteo = pd.DataFrame( columns=['Jour','Temperature [°C]','Humidité [%]','Pression [Hpa]','Vitesse vent [km/h]', 'Direction vent [°]', 'Nébulosité [%]'])
+
+        for cell in Table:
+            print (str(cell))
+            #jour - heure
+            Day = str(cell)
+            PatternDbt=' timestamp="'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('UTC">')
+            DayMenu[nb_day] = Day[result_dbt+len(PatternDbt):result_fin-10]
+            Date = Day[result_dbt+len(PatternDbt):result_fin-1]
+            #Température
+            PatternDbt='<temperature><level val="2m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level><level val="sol">')
+            Temp = float(Day[result_dbt+len(PatternDbt):result_fin])-273.15
+            #Pression
+            PatternDbt='<level val="niveau_de_la_mer">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></pression>')
+            Pression = float(Day[result_dbt+len(PatternDbt):result_fin])/100
+            #Humidité
+            PatternDbt='<humidite><level val="2m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></humidite>')
+            Humid = float(Day[result_dbt+len(PatternDbt):result_fin])
+            #V_Vent
+            PatternDbt='<vent_moyen><level val="10m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></vent_moyen>')
+            V_vent = float(Day[result_dbt+len(PatternDbt):result_fin])
+            #Dir_Vent
+            PatternDbt='</vent_rafales><vent_direction><level val="10m">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></vent_direction>')
+            Dir_Vent = float(Day[result_dbt+len(PatternDbt):result_fin])%360
+            #Nebulosité
+            PatternDbt='</level><level val="totale">'
+            result_dbt = Day.find(PatternDbt)
+            result_fin = Day.find('</level></nebulosite>')
+            Nebul = float(Day[result_dbt+len(PatternDbt):result_fin])
+            
+            NvelleLigne =  {'Jour':Date,
+                            'Temperature [°C]':Temp,
+                            'Humidité [%]':Humid,
+                            'Pression [Hpa]':Pression,
+                            'Vitesse vent [km/h]':V_vent,
+                            'Direction vent [°]':Dir_Vent,
+                            'Nébulosité [%]':Nebul}
+            
+            DataMeteo = pd.concat([DataMeteo, pd.DataFrame([NvelleLigne])], ignore_index=True)
+
+            nb_day=nb_day+1;
+
+        for i in range(len(DayMenu)):
+            if i>=nb_day:   
+                DayMenu.pop(len(DayMenu)-1)
+
+        DayMenuset = set(DayMenu)
+        DayMenu=list(DayMenuset)
+        DayMenu.sort()
+
+        st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu)
+        st.sidebar.write('Prévisions météo issues du site: https://www.infoclimat.fr/')
+
 
     st.title('Informations complémentaires')
     col1, col2, col3 = st.columns(3)

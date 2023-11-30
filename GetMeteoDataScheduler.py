@@ -26,8 +26,8 @@ params = {
 	"longitude": 2.0111,
 	"hourly": ["temperature_2m", "relative_humidity_2m", "dew_point_2m", "precipitation", "pressure_msl", "cloud_cover", "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"],
 	"timezone": "auto",
-	"start_date": "2023-12-01",
-	"end_date": "2023-12-01"
+	"start_date": yesterday,
+	"end_date": yesterday
 }
 responses = openmeteo.weather_api(url, params=params)
 

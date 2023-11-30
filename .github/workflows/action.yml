@@ -1,5 +1,7 @@
 name: run GetMeteoDataScheduler.py
 
+permissions: write-all
+
 on:
     schedule:
         - cron: '15,30,45,00 * * * *' #run each 1/4 hour

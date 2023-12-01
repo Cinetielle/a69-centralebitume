@@ -11,7 +11,7 @@ today = date.today()
 yesterday = today - timedelta(days = 2)
 print("Requete des données météo pour le : ", yesterday)
 
-DataFilePath = 'DATA/METEO/Donnees_meteo_Puylaurens_tmp.csv'
+DataFilePath = 'DATA/METEO/Donnees_meteo_Puylaurens.csv'
 
 # Setup the Open-Meteo API client with cache and retry on error
 cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)

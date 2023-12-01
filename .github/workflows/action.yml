@@ -4,7 +4,7 @@ permissions: write-all
 
 on:
     schedule:
-        - cron: '00,15,30,45 * * * *' #run every **h30
+        - cron: '5 3 * * *' #run every **h30
         
 jobs:
     build:

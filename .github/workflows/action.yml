@@ -37,4 +37,7 @@ jobs:
           uses: ad-m/github-push-action@v0.6.0
           with:
             github_token: ${{ secrets.TOKEN_BOT }}
-            branch: main 
+            branch: Bot_branch
+
+        - name: Create Pull Request
+          uses: peter-evans/create-pull-request@v5 

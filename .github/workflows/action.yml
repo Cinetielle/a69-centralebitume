@@ -54,12 +54,6 @@ jobs:
             title: '[BOT] Update meteo data'
             body: |
               Update meteo data historic by bot
-              - see ./DATA/METEO/Donnees_meteo_Puylaurens_tmp.csv
             labels: |
               automated PR
-
-        - name: push changes
-          uses: ad-m/github-push-action@v0.6.0
-          with:
-            github_token: ${{ secrets.TOKEN_BOT }}
-            branch: 'Bot_branch'
+              automerge

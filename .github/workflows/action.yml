@@ -4,7 +4,7 @@ permissions: write-all
 
 on:
     schedule:
-        - cron: '*/15 * * * *' #run every **h30
+        - cron: '*/10 * * * *' #run every **h30
         
 jobs:
     build:
@@ -38,14 +38,28 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.TOKEN_BOT }}
           with:
-            branch: 'release-notes'
+            branch: 'Bot_branch'
             sha: '${{ github.event.pull_request.head.sha }}'
+
+        - name: Create Pull Request
+          uses: peter-evans/create-pull-request@v5
+          with:
+            token: ${{ secrets.TOKEN_BOT }}
+            commit-message: Update meteo data
+            committer: GitHub <noreply@github.com>
+            author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+            signoff: false
+            branch: Bot_branch
+            delete-branch: true
+            title: '[BOT] Update meteo data'
+            body: |
+              Update meteo data historic by bot
+              - see toto
+            labels: |
+              automated PR
 
         - name: push changes
           uses: ad-m/github-push-action@v0.6.0
           with:
             github_token: ${{ secrets.TOKEN_BOT }}
-            branch: Bot_branch
-
-        - name: Create Pull Request
-          uses: peter-evans/create-pull-request@v5 
+            branch: 'Bot_branch'

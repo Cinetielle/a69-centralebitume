@@ -4,7 +4,7 @@ permissions: write-all
 
 on:
     schedule:
-        - cron: '30 * * * *' #run every **h30
+        - cron: '*/15 * * * *' #run every **h30
         
 jobs:
     build:
@@ -32,6 +32,14 @@ jobs:
             git config --local user.name "BotPuylaurensCD"
             git add -A
             git diff-index --quiet HEAD || (git commit -a -m "automatic update meteo data historic" --allow-empty)
+
+        - name: Create branche
+          uses: peterjgrainger/action-create-branch@v2.2.0
+          env:
+            GITHUB_TOKEN: ${{ secrets.TOKEN_BOT }}
+          with:
+            branch: 'release-notes'
+            sha: '${{ github.event.pull_request.head.sha }}'
 
         - name: push changes
           uses: ad-m/github-push-action@v0.6.0

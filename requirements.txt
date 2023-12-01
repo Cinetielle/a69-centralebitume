@@ -1,5 +1,4 @@
 altair
-beautifulsoup4
 folium
 geopandas
 geopy

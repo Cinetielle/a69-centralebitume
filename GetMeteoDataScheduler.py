@@ -8,7 +8,7 @@ from retry_requests import retry
 
 today = date.today()
 
-yesterday = today - timedelta(days = 2)
+yesterday = today - timedelta(days = 1)
 print("Requete des données météo pour le : ", yesterday)
 
 DataFilePath = 'DATA/METEO/Donnees_meteo_Puylaurens.csv'

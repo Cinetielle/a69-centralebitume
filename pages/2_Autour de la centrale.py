@@ -17,12 +17,13 @@ import numpy
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
-import datetime
 import folium
 from streamlit_folium import st_folium
 from PIL import Image
-from bs4 import BeautifulSoup
-import requests
+import Functions.map_tool as map_tool
+import Functions.Meteo_tool as Meteo_tool
+from datetime import date
+from datetime import timedelta
 
 LegendMap = Image.open('./im/mapLegend.png')
 
@@ -31,84 +32,57 @@ def data_explore() -> None:
     Distance = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=10.0, step=0.01)
     TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
     if TimeVision == 'Historique':
-        meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-        date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
-        start_date = st.sidebar.date_input('Début de période', date[0]+datetime.timedelta(days=5))
-        end_date = st.sidebar.date_input('Fin de période', date[len(date)-1])
+        print('in development')
+        #meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
+        #date_tmp = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
+        #start_date = st.sidebar.date_input('Début de période', date_tmp[0]+datetime.timedelta(days=5))
+        #end_date = st.sidebar.date_input('Fin de période', date_tmp[len(date)-1])
     elif TimeVision == 'Temps réel':
-        st.write(TimeVision)
+        today = date.today()
+        Temperature, Humidite, IsDay, Precipitation, CouvertureNuageuse, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive(today)
+
+        Temperature = round(Temperature*100)/100
+        Pression    = round(Pression*100)/100
+        V_vents     = round(V_vents*100)/100
+        Dir_vents   = round(Dir_vents*100)/100
+        Raf_vents   = round(Raf_vents*100)/100
+
+        if IsDay==1: JourStatus ='jour'
+        else: JourStatus ='nuit'
+
+        TableParticule = pd.DataFrame(
+        [
+            {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
+            {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
+            {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
+            {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
+            {"Donnée": "Couverture nuageuse", "Valeur":CouvertureNuageuse, "Unité":'%'},
+            {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
+            {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
+            {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
+            {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
+
+        ]
+        )
+
+        st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
+
     elif TimeVision == 'Prévisions':
 
-        url_weather = "http://www.infoclimat.fr/public-api/gfs/xml?_ll=43.57202,2.01227&_auth=VE4FElEvUnBWe1BnBXMGL1c%2FU2YAdlJ1C3dQMw5gXiNTNVU2UTABY1U4B3oOIQQyByoGZlxiCTMKawpqD30AfFQ1BWhROlI0VjBQNwU3Bi1Xe1MuAD5SdQt3UDYOY140Uy5VMFE7AX1VOwdsDjcELgc8BmZcfAkuCmgKag9iAGJUNQVkUTVSMVY8UDEFKgYtV2JTNgA5Um0LaVBhDjBePFMxVTdRYQFgVTgHYw4gBDYHPQZjXGEJMApgCmUPZQB8VCgFGFFBUi1WeVBwBWAGdFd5U2YAYVI%2B&_c=2154afe7f27ed3dd1101e78462166290"
-        response = requests.get(url_weather)
-        HTML_content = BeautifulSoup(response.content, 'html.parser')
-        Table = HTML_content.findAll('echeance')
+        today = date.today()
 
-        DayMenu=[i for i in range(70)]; nb_day =0
-        DataMeteo = pd.DataFrame( columns=['Jour','Temperature [°C]','Humidité [%]','Pression [Hpa]','Vitesse vent [km/h]', 'Direction vent [°]', 'Nébulosité [%]'])
+        prevJ1 = today + timedelta(days = 1)
+        prevJ2 = today + timedelta(days = 2)
+        prevJ3 = today + timedelta(days = 3)
+        prevJ4 = today + timedelta(days = 4)
+        prevJ5 = today + timedelta(days = 5)
+        prevJ6 = today + timedelta(days = 6)
+        prevJ7 = today + timedelta(days = 7)
 
-        for cell in Table:
-            print (str(cell))
-            #jour - heure
-            Day = str(cell)
-            PatternDbt=' timestamp="'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('UTC">')
-            DayMenu[nb_day] = Day[result_dbt+len(PatternDbt):result_fin-10]
-            Date = Day[result_dbt+len(PatternDbt):result_fin-1]
-            #Température
-            PatternDbt='<temperature><level val="2m">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level><level val="sol">')
-            Temp = float(Day[result_dbt+len(PatternDbt):result_fin])-273.15
-            #Pression
-            PatternDbt='<level val="niveau_de_la_mer">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level></pression>')
-            Pression = float(Day[result_dbt+len(PatternDbt):result_fin])/100
-            #Humidité
-            PatternDbt='<humidite><level val="2m">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level></humidite>')
-            Humid = float(Day[result_dbt+len(PatternDbt):result_fin])
-            #V_Vent
-            PatternDbt='<vent_moyen><level val="10m">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level></vent_moyen>')
-            V_vent = float(Day[result_dbt+len(PatternDbt):result_fin])
-            #Dir_Vent
-            PatternDbt='</vent_rafales><vent_direction><level val="10m">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level></vent_direction>')
-            Dir_Vent = float(Day[result_dbt+len(PatternDbt):result_fin])%360
-            #Nebulosité
-            PatternDbt='</level><level val="totale">'
-            result_dbt = Day.find(PatternDbt)
-            result_fin = Day.find('</level></nebulosite>')
-            Nebul = float(Day[result_dbt+len(PatternDbt):result_fin])
-            
-            NvelleLigne =  {'Jour':Date,
-                            'Temperature [°C]':Temp,
-                            'Humidité [%]':Humid,
-                            'Pression [Hpa]':Pression,
-                            'Vitesse vent [km/h]':V_vent,
-                            'Direction vent [°]':Dir_Vent,
-                            'Nébulosité [%]':Nebul}
-            
-            DataMeteo = pd.concat([DataMeteo, pd.DataFrame([NvelleLigne])], ignore_index=True)
+        DayMenu = [prevJ1, prevJ2, prevJ3, prevJ4, prevJ5, prevJ6, prevJ7]
+        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu)
 
-            nb_day=nb_day+1;
-
-        for i in range(len(DayMenu)):
-            if i>=nb_day:   
-                DayMenu.pop(len(DayMenu)-1)
-
-        DayMenuset = set(DayMenu)
-        DayMenu=list(DayMenuset)
-        DayMenu.sort()
-
-        st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu)
-        st.sidebar.write('Prévisions météo issues du site: https://www.infoclimat.fr/')
+        MeteoData = Meteo_tool.MeteoDataFuture(ChosenDay)
 
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 
@@ -120,32 +94,10 @@ def data_explore() -> None:
     CoordCentraleLon = interestingRow["Longi"]
 
     max_delta =  Distance/ (numpy.pi * Earth_rad*2 / 360)
+    zoom_lvl = map_tool.ZoomLvl(max_delta)
 
-    if max_delta<0.005: zoom_lvl=16
-    elif max_delta<0.011:zoom_lvl=15
-    elif max_delta<0.022:zoom_lvl=14
-    elif max_delta<0.044:zoom_lvl=13
-    elif max_delta<0.088:zoom_lvl=12
-    elif max_delta<0.176:zoom_lvl=11
-    elif max_delta<0.352:zoom_lvl=10
-    elif max_delta<0.703:zoom_lvl=9
-    elif max_delta<1.406:zoom_lvl=8
-    elif max_delta<2.813:zoom_lvl=7
-    elif max_delta<5.625:zoom_lvl=6
-    elif max_delta<11.25:zoom_lvl=5
-    elif max_delta<22.5:zoom_lvl=4
-    elif max_delta<45:zoom_lvl=3
-    elif max_delta<90:zoom_lvl=2
-    elif max_delta<180:zoom_lvl=1
-    else: zoom_lvl=0
+    MapTiles = map_tool.SwitchMapStyle()
 
-    ToggleSat = st.toggle('Vue carte / Vue satellite')
-    if ToggleSat:
-        MapTiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'"
-    else:
-        MapTiles='https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
-
-    
     m = folium.Map(location=[CoordCentraleLat,CoordCentraleLon], zoom_start=zoom_lvl, tiles="OpenStreetMap")
     m._children['openstreetmap'].tiles=MapTiles
     folium.Circle(location=[CoordCentraleLat,CoordCentraleLon], fill_color='#000', radius=Distance*1000, weight=2, color="#000").add_to(m)
@@ -164,9 +116,7 @@ def data_explore() -> None:
     #Affichage des markers
     for i in range(len(DataGPS)):
         Type=DataGPS.Type[i]
-        DistanceBat = numpy.arccos(numpy.sin(numpy.radians(CoordCentraleLat))*numpy.sin(numpy.radians(DataGPS.Lat[i]))+
-                                   numpy.cos(numpy.radians(CoordCentraleLat))*numpy.cos(numpy.radians(DataGPS.Lat[i]))*
-                                   numpy.cos(numpy.radians(CoordCentraleLon-DataGPS.Longi[i])))*Earth_rad 
+        DistanceBat = map_tool.DistanceAB_Earth(CoordCentraleLat,DataGPS.Lat[i],CoordCentraleLon,DataGPS.Longi[i])
         
         if float(DistanceBat)<=float(Distance):    
             Message=DataGPS.Batiment[i]+" - "+DataGPS.Ville[i]

@@ -4,7 +4,7 @@ permissions: write-all
 
 on:
     schedule:
-        - cron: '*/10 * * * *' #run every **h30
+        - cron: '00,15,30,45 * * * *' #run every **h30
         
 jobs:
     build:
@@ -54,7 +54,7 @@ jobs:
             title: '[BOT] Update meteo data'
             body: |
               Update meteo data historic by bot
-              - see toto
+              - see ./DATA/METEO/Donnees_meteo_Puylaurens_tmp.csv
             labels: |
               automated PR
 

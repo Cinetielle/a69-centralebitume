@@ -4,7 +4,7 @@ permissions: write-all
 
 on:
     schedule:
-        - cron: '30 3 * * *' #run every 03h05
+        - cron: '30 * * * *' #run every **h30
         
 jobs:
     build:
@@ -28,13 +28,13 @@ jobs:
 
         - name: commit files
           run: |
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
+            git config --local user.email "puylaurenscitoyensderoutes@gmail.com"
+            git config --local user.name "BotPuylaurensCD"
             git add -A
             git diff-index --quiet HEAD || (git commit -a -m "automatic update meteo data historic" --allow-empty)
 
         - name: push changes
           uses: ad-m/github-push-action@v0.6.0
           with:
-            github_token: ${{ secrets.GITHUB_TOKEN }}
+            github_token: ${{ secrets.TOKEN_BOT }}
             branch: main 

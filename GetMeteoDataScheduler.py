@@ -1,10 +1,13 @@
 from datetime import date
 from datetime import timedelta
 import openmeteo_requests
-
+from bs4 import BeautifulSoup
 import requests_cache
 import pandas as pd
 from retry_requests import retry
+import requests
+import re
+import csv
 
 today = date.today()
 
@@ -12,7 +15,7 @@ yesterday = today - timedelta(days = 1)
 print("Requete des données météo pour le : ", yesterday)
 
 DataFilePath = 'DATA/METEO/Donnees_meteo_Puylaurens.csv'
-
+DataFilePathExpoSol = 'DATA/METEO/Tmp_ExpoSol.csv'
 # Setup the Open-Meteo API client with cache and retry on error
 cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
 retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
@@ -69,7 +72,10 @@ hourly_data["wind_gusts_10m"] = hourly_wind_gusts_10m
 hourly_dataframe = pd.DataFrame(data = hourly_data)
 print(hourly_dataframe)
 
+print('Load yesterday solar exposure')
+ExpoSolYest=pd.read_csv(DataFilePathExpoSol)
 
+print('Reformat of dataframe')
 ReformatedDf= pd.DataFrame(columns=['year',
                                     'month',
                                     'day',
@@ -85,8 +91,6 @@ ReformatedDf= pd.DataFrame(columns=['year',
                                     'Pression [hPa]',
                                     'Exposition solaire [W/m²]',
                                     'Précipitation [mm]'])
-
-print('Reformat of dataframe')
 
 for i in range(len(hourly_data["temperature_2m"] )):
 	#Date
@@ -111,7 +115,11 @@ for i in range(len(hourly_data["temperature_2m"] )):
 	Pression = str(hourly_data["pressure_msl"][i])
 	
 	#Expo solaire
-	ExpoSol = ''#str(hourly_data["cloud_cover"][i])
+	ExpoSol = str(0)
+	for j in range(len(ExpoSolYest.Heure)):
+		if int(hour) == int(ExpoSolYest.Heure[j]):
+			ExpoSol = str(ExpoSolYest.SolarPower[j])
+			break
 	
 	#Précipitation
 	Precip = str(hourly_data["precipitation"][i])
@@ -122,5 +130,29 @@ for i in range(len(hourly_data["temperature_2m"] )):
 		f.write(NewLigne)
 		f.write('\n')
     
+print('Get Solar exposure - today')
+
+url_weather = "https://fr.tutiempo.net/radiation-solaire/puylaurens.html"
+response = requests.get(url_weather)
+HTML_content = BeautifulSoup(response.content, 'html.parser')
+Content = HTML_content.text
+
+start_point=Content.find("Aujourd'hui")
+Content = Content[start_point:len(Content)]
+end_point = [i.start() for i in re.finditer("Totale", Content)]
+Content= Content[0:end_point[1]]
+
+start_point = [i.start() for i in re.finditer(r"\d\d:\d\d", Content)]
+end_point = [i.start() for i in re.finditer(" w/m2", Content)]
+
+TableSolarPower = pd.DataFrame(columns=['Heure', 'SolarPower'])
+
+for i in range(len(start_point)):
+	Hour = int(Content[start_point[i]:start_point[i]+2])
+	SolPow = int(Content[start_point[i]+5:end_point[i]])
+	NvelleLigne = {"Heure": Hour,"SolarPower":SolPow}
+	TableSolarPower = pd.concat([TableSolarPower, pd.DataFrame([NvelleLigne])], ignore_index=True)
+
+TableSolarPower.to_csv(DataFilePathExpoSol,index=False)
 
 print('execution success')

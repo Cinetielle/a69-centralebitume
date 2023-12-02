@@ -22,8 +22,8 @@ from streamlit_folium import st_folium
 from PIL import Image
 import Functions.map_tool as map_tool
 import Functions.Meteo_tool as Meteo_tool
-from datetime import date
-from datetime import timedelta
+from datetime import  datetime, timedelta
+import pytz
 
 LegendMap = Image.open('./im/mapLegend.png')
 
@@ -38,8 +38,7 @@ def data_explore() -> None:
         #start_date = st.sidebar.date_input('Début de période', date_tmp[0]+datetime.timedelta(days=5))
         #end_date = st.sidebar.date_input('Fin de période', date_tmp[len(date)-1])
     elif TimeVision == 'Temps réel':
-        today = date.today()
-        Temperature, Humidite, IsDay, Precipitation, CouvertureNuageuse, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive(today)
+        Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
 
         Temperature = round(Temperature*100)/100
         Pression    = round(Pression*100)/100
@@ -56,7 +55,7 @@ def data_explore() -> None:
             {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
             {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
             {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
-            {"Donnée": "Couverture nuageuse", "Valeur":CouvertureNuageuse, "Unité":'%'},
+            {"Donnée": "Exposition nuageuse", "Valeur":SolarPower,         "Unité":'W/m²'},
             {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
             {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
             {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
@@ -69,20 +68,20 @@ def data_explore() -> None:
 
     elif TimeVision == 'Prévisions':
 
-        today = date.today()
-
-        prevJ1 = today + timedelta(days = 1)
-        prevJ2 = today + timedelta(days = 2)
-        prevJ3 = today + timedelta(days = 3)
-        prevJ4 = today + timedelta(days = 4)
-        prevJ5 = today + timedelta(days = 5)
-        prevJ6 = today + timedelta(days = 6)
-        prevJ7 = today + timedelta(days = 7)
-
-        DayMenu = [prevJ1, prevJ2, prevJ3, prevJ4, prevJ5, prevJ6, prevJ7]
-        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu)
-
-        MeteoData = Meteo_tool.MeteoDataFuture(ChosenDay)
+        tz = pytz.timezone('Europe/Paris')
+        now = datetime.now(tz)
+        month = now.month
+        if month < 10:
+            month = '0'+str(month)
+        day = now.day
+        if day < 10:
+            day = '0'+str(day)    
+        today = str(now.year)+'-'+str(month)+'-'+str(day)
+        today = datetime.strptime(today, '%Y-%m-%d').date()
+        DayMenu = [today + timedelta(days = i) for i in range(8)]
+        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
+ 
+        MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
 
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 

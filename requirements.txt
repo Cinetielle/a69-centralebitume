@@ -1,4 +1,5 @@
 altair
+beautifulsoup4
 folium
 geopandas
 geopy
@@ -8,6 +9,7 @@ openmeteo_requests
 pandas
 plotly
 pydeck
+pytz
 requests
 requests_cache
 retry

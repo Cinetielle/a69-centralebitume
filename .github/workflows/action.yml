@@ -1,10 +1,10 @@
-name: run GetMeteoDataScheduler.py
+name: '[BOT] Get meteo data day-1.py'
 
 permissions: write-all
 
 on:
     schedule:
-        - cron: '5 3 * * *' #run every **h30
+        - cron: '5 3 * * *' 
         
 jobs:
     build:
@@ -55,5 +55,4 @@ jobs:
             body: |
               Update meteo data historic by bot
             labels: |
-              automated PR
               automerge

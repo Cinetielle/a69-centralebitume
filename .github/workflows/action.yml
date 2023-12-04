@@ -34,7 +34,7 @@ jobs:
             git diff-index --quiet HEAD || (git commit -a -m "automatic update meteo data historic" --allow-empty)
 
         - name: Create branche
-          uses: peterjgrainger/action-create-branch@v2.2.0
+          uses: peterjgrainger/action-create-branch@v2.3.0
           env:
             GITHUB_TOKEN: ${{ secrets.TOKEN_BOT }}
           with:

@@ -9,6 +9,7 @@ openmeteo_requests
 pandas
 plotly
 pydeck
+pyproj
 pytz
 requests
 requests_cache
@@ -17,3 +18,4 @@ retry_requests
 scipy
 streamlit
 streamlit-folium
+thermo

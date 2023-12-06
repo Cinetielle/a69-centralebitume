@@ -21,8 +21,13 @@ import streamlit as st
 from streamlit.hello.utils import show_code
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+import geopandas as gpd
+from shapely.geometry import Polygon, MultiPolygon
+import branca.colormap as cmp
 import folium
 from streamlit_folium import st_folium
 from pyproj import Transformer
@@ -589,6 +594,36 @@ def coupe_vertical():
     st.pyplot(fig)
     st.pyplot(fig2)
 
+def collec_to_gdf(collec_poly):
+    """Transform a `matplotlib.contour.QuadContourSet` to a GeoDataFrame"""
+    polygons = []
+    for i, polygon in enumerate(collec_poly.collections):
+        mpoly = []
+        for path in polygon.get_paths():
+            try:
+                path.should_simplify = False
+                poly = path.to_polygons()
+                # Each polygon should contain an exterior ring + maybe hole(s):
+                exterior, holes = [], []
+                if len(poly) > 0 and len(poly[0]) > 3:
+                    # The first of the list is the exterior ring :
+                    exterior = poly[0]
+                    # Other(s) are hole(s):
+                    if len(poly) > 1:
+                        holes = [h for h in poly[1:] if len(h) > 3]
+                mpoly.append(Polygon(exterior, holes))
+            except:
+                print('Warning: Geometry error when making polygon #{}'
+                      .format(i))
+        if len(mpoly) > 1:
+            mpoly = MultiPolygon(mpoly)
+            polygons.append(mpoly)
+        elif len(mpoly) == 1:
+            polygons.append(mpoly[0])
+    return gpd.GeoDataFrame(geometry=polygons, crs={'init': 'epsg:2154'})
+    
+
+
 def carte_stationnaire():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -628,14 +663,30 @@ def carte_stationnaire():
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
     cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
     st.pyplot(fig)
-    return np.nanmax(C)
-
-def map_folium_stationnaire():
-    lon, lat = RGF93_to_WGS84.transform(xx=x0, yy=y0)
+    #folium map 
+    cmap = mpl.cm.get_cmap(name='nipy_spectral')
+    norm = mpl.colors.Normalize(vmin=1E-15, vmax=1E-3, norm='log')
+    cmap_list = cmap(contour).tolist()
+    print(cmap_list)
+    cmap_folium = cmp.LinearColormap(cmap_list, vmin=-15, vmax=-3, index=contour, caption='my colormap')
+    gdfcontour = collec_to_gdf(im)
+    gdfcontour = gdfcontour.to_crs('epsg:4326')  
+    lon, lat = RGF93_to_WGS84.transform(xx=x0, yy=y0)        
     m = folium.Map(location=[lat, lon])
     IconCentrale = folium.Icon(icon="house", icon_color="black", color="black", prefix="fa")
     folium.Marker([lat, lon], popup="Centrale à bitume", tooltip="Centrale à bitume", icon=IconCentrale).add_to(m)
+    folium.Choropleth(gdfcontour,
+                      line_weight=3,
+                      fill_opacity = 0.1,
+                      line_color='black').add_to(m)
+    m.add_child(cmap_folium)
     st_map = st_folium(m, use_container_width=True)
+    
+
+
+
+
+
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)
@@ -979,8 +1030,7 @@ st.markdown("""
     , unsafe_allow_html=True
 )
 
-min_dilution = carte_stationnaire()
-map_folium_stationnaire()
+carte_stationnaire()
 
 st.markdown("""
         ### Le calcul par bouffée

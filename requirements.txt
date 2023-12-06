@@ -18,3 +18,4 @@ retry_requests
 scipy
 streamlit
 streamlit-folium
+thermo

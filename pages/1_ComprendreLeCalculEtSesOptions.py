@@ -597,30 +597,26 @@ def coupe_vertical():
 def collec_to_gdf(collec_poly):
     """Transform a `matplotlib.contour.QuadContourSet` to a GeoDataFrame"""
     polygons = []
-    for i, polygon in enumerate(collec_poly.collections):
+    for i, path in enumerate(collec_poly._paths):
         mpoly = []
-        for path in polygon.get_paths():
-            try:
-                path.should_simplify = False
-                poly = path.to_polygons()
-                # Each polygon should contain an exterior ring + maybe hole(s):
-                exterior, holes = [], []
-                if len(poly) > 0 and len(poly[0]) > 3:
-                    # The first of the list is the exterior ring :
-                    exterior = poly[0]
-                    # Other(s) are hole(s):
-                    if len(poly) > 1:
-                        holes = [h for h in poly[1:] if len(h) > 3]
-                mpoly.append(Polygon(exterior, holes))
-            except:
-                print('Warning: Geometry error when making polygon #{}'
-                      .format(i))
+        path.should_simplify = False
+        poly = path.to_polygons()
+        # Each polygon should contain an exterior ring + maybe hole(s):
+        exterior, holes = [], []
+        if len(poly) > 0 and len(poly[0]) > 3:
+            # The first of the list is the exterior ring :
+            exterior = poly[0]
+            # Other(s) are hole(s):
+            if len(poly) > 1:
+                holes = [h for h in poly[1:] if len(h) > 3]
+        mpoly.append(Polygon(exterior, holes))
         if len(mpoly) > 1:
             mpoly = MultiPolygon(mpoly)
             polygons.append(mpoly)
         elif len(mpoly) == 1:
             polygons.append(mpoly[0])
-    return gpd.GeoDataFrame(geometry=polygons, crs={'init': 'epsg:2154'})
+    gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
+    return gpfile
     
 
 
@@ -650,8 +646,8 @@ def carte_stationnaire():
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
     fig, ax = plt.subplots(figsize=(10, 10))
-    contour = np.arange(-15.,-2.)
-    contour = [10**i for i in contour]
+    contour_log10 = np.arange(-15.,-2.)
+    contour = [10**i for i in contour_log10]
     ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
     im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
     ax.scatter(x0, y0, c='crimson', zorder=3)
@@ -664,22 +660,27 @@ def carte_stationnaire():
     cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
     st.pyplot(fig)
     #folium map 
-    cmap = mpl.cm.get_cmap(name='nipy_spectral')
-    norm = mpl.colors.Normalize(vmin=1E-15, vmax=1E-3, norm='log')
-    cmap_list = cmap(contour).tolist()
-    print(cmap_list)
-    cmap_folium = cmp.LinearColormap(cmap_list, vmin=-15, vmax=-3, index=contour, caption='my colormap')
+    cmap = mpl.colormaps['nipy_spectral']
+    norm = mpl.colors.LogNorm(vmin=1E-15, vmax=1E-2)
+    cmap_list = [cmap(norm(i)) for i in contour]
+    cmap_folium = cmp.LinearColormap(cmap_list, vmin=-15, vmax=-2, index=contour, caption='PCD')
+    print(cmap_folium)
     gdfcontour = collec_to_gdf(im)
+    gdfcontour['data'] = contour_log10
     gdfcontour = gdfcontour.to_crs('epsg:4326')  
+    
     lon, lat = RGF93_to_WGS84.transform(xx=x0, yy=y0)        
     m = folium.Map(location=[lat, lon])
     IconCentrale = folium.Icon(icon="house", icon_color="black", color="black", prefix="fa")
     folium.Marker([lat, lon], popup="Centrale à bitume", tooltip="Centrale à bitume", icon=IconCentrale).add_to(m)
-    folium.Choropleth(gdfcontour,
-                      line_weight=3,
+    filtre = [i.is_empty is False for i in gdfcontour.geometry]
+    id_filtre = np.where(filtre)[0]
+    folium.Choropleth(geo_data=gdfcontour.loc[id_filtre, 'geometry'],
+                      data=gdfcontour.loc[id_filtre, 'data'],
+                      line_weight=0.3,
+                      fill_color='Paired',
                       fill_opacity = 0.1,
-                      line_color='black').add_to(m)
-    m.add_child(cmap_folium)
+                      line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
 

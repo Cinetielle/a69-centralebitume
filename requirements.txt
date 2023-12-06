@@ -9,6 +9,7 @@ openmeteo_requests
 pandas
 plotly
 pydeck
+pyproj
 pytz
 requests
 requests_cache

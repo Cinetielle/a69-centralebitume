@@ -32,9 +32,12 @@ import folium
 from streamlit_folium import st_folium
 from pyproj import Transformer
 
+import reaktoro as rkt
+
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
 image_DP3 = Image.open('./im/Turner1970.png')
+image_DP4 = Image.open('./im/panache.jpg')
 
 RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
 WGS84_to_RGF93 = Transformer.from_crs('4326', '2154', always_xy=True)
@@ -591,7 +594,9 @@ def coupe_vertical():
     plt.colorbar(f2, ax=ax2, orientation='horizontal').set_label(r'Facteur de dilution en $log_{10}$')
     ax2.set_xlabel(f"Distance au centre du panache (m) à {Xy[0, 0]/1000} km du centre d'émission")
     ax2.set_ylabel("Altitude perpendiculairement \n à la direction du vent.")
+    st.write('Coupe parallèle à la direction du vent (en vert sur la figure précédente):')
     st.pyplot(fig)
+    st.write('Coupe perpendiculaire à la direction du vent (en Lilas sur la figure précédente):')
     st.pyplot(fig2)
 
 def collec_to_gdf(collec_poly):
@@ -664,7 +669,6 @@ def carte_stationnaire():
     norm = mpl.colors.LogNorm(vmin=1E-15, vmax=1E-2)
     cmap_list = [cmap(norm(i)) for i in contour]
     cmap_folium = cmp.LinearColormap(cmap_list, vmin=-15, vmax=-2, index=contour, caption='PCD')
-    print(cmap_folium)
     gdfcontour = collec_to_gdf(im)
     gdfcontour['data'] = contour_log10
     gdfcontour = gdfcontour.to_crs('epsg:4326')  
@@ -683,7 +687,17 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
-
+    db = rkt.NasaDatabase("nasa-cea")
+    gases = rkt.GaseousPhase("CO2 O2 H2O CH4 CO N2 Ar")
+    system = rkt.ChemicalSystem(db, gases)
+    state = rkt.ChemicalState(system)
+    state.temperature(0, "celsius")
+    state.pressure(1.013, "bar")
+    state.set("CO2", 44.64*0.000412, "mol")
+    state.set("O2" , 44.64*0.20946, "mol")
+    state.set("N2" , 44.64*0.78084, "mol")
+    state.set("Ar", 44.64*0.00934, "mol")
+    print(state)
 
 
 
@@ -982,8 +996,8 @@ st.markdown("""
         <div style="text-align: justify;">    
         Afin de bien comprendre ce qu'implique ces coefficients, nous allons représenter la dilution du volume émis en fonction de la distance à la source. Pour cela, nous ferons une représentation de ce volume 3D à travers deux coupes: 
         <ol>
-            <li> une coupe verticale, parallèle à la direction du vent </li>
-            <li> une coupe verticale, perpendiculaire à la direction du vent</li>
+            <li> une coupe verticale, parallèle à la direction du vent (en vert sur la figure suivante) </li>
+            <li> une coupe verticale, perpendiculaire à la direction du vent (en lilas sur la figure suivante) </li>
         </ol>
         </div>   
         <p>
@@ -992,6 +1006,7 @@ st.markdown("""
     , unsafe_allow_html=True
 )
 
+st.image(image_DP4, caption="Illustration de la position des coupes présentées ci-après vis à vis de la direction du vent.")
 coupe_vertical()
 
 st.markdown("""

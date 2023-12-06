@@ -32,7 +32,7 @@ import folium
 from streamlit_folium import st_folium
 from pyproj import Transformer
 
-import reaktoro as rkt
+import thermo
 
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
@@ -213,7 +213,7 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     return res
                                            
 def surelevation():
-    global Vs, v, d, Ts, Ta, xmax, Qh, RSI, HR, vVent
+    global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
     td = meteo.index[-1]-meteo.index[0]
     date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=td.days, step=1)
     date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/03/06')+datetime.timedelta(days=date_meteo_increment))
@@ -687,17 +687,7 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
-    db = rkt.NasaDatabase("nasa-cea")
-    gases = rkt.GaseousPhase("CO2 O2 H2O CH4 CO N2 Ar")
-    system = rkt.ChemicalSystem(db, gases)
-    state = rkt.ChemicalState(system)
-    state.temperature(0, "celsius")
-    state.pressure(1.013, "bar")
-    state.set("CO2", 44.64*0.000412, "mol")
-    state.set("O2" , 44.64*0.20946, "mol")
-    state.set("N2" , 44.64*0.78084, "mol")
-    state.set("Ar", 44.64*0.00934, "mol")
-    print(state)
+    thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
 
 
 

@@ -13,15 +13,13 @@
 # limitations under the License.
 
 from typing import Any
-
-import numpy as np
-
-import streamlit as st
 from streamlit.hello.utils import show_code
-import pandas as pd
+
 import datetime
 import matplotlib.pyplot as plt
-import scipy
+import numpy as np
+import pandas as pd
+import streamlit as st
 
 meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
 meteo.index = pd.to_datetime(meteo.iloc[:, :5])
@@ -210,8 +208,6 @@ def plot_for_pasquill():
     ax2.set_facecolor('k')
     cbar2 = plt.colorbar(f2, ax= ax2, orientation='horizontal').set_label('Humidité (%)')
     st.pyplot(fig2)
-
-    
 
 def data_explore():
 

@@ -1,13 +1,12 @@
-from datetime import date
-from datetime import timedelta
-import openmeteo_requests
 from bs4 import BeautifulSoup
-import requests_cache
-import pandas as pd
+from datetime import date, timedelta
 from retry_requests import retry
-import requests
+
+import openmeteo_requests
+import pandas as pd
+import requests_cache
 import re
-import csv
+import requests
 
 today = date.today()
 

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import streamlit as st
-from streamlit.logger import get_logger
 from PIL import Image
+from streamlit.logger import get_logger
+
+import streamlit as st
 
 LOGGER = get_logger(__name__)
 

@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-import numpy
-import streamlit as st
-from streamlit.hello.utils import show_code
-import pandas as pd
-from datetime import  datetime, timedelta
-import folium
-from streamlit_folium import st_folium
 from geopy.geocoders import Nominatim
 from PIL import Image
+from datetime import  datetime, timedelta
+from streamlit_folium import st_folium
+from streamlit.hello.utils import show_code
+from typing import Any
+
+import folium
 import Functions.map_tool as map_tool
 import Functions.Meteo_tool as Meteo_tool
+import pandas as pd
 import pytz
+import streamlit as st
 
 LegendMap = Image.open('./im/mapLegend.png')
 
-def data_explore() -> None:
+def main() -> None:
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 
     DataGPS = DataGPS.astype({"Lat":"float"})
@@ -67,60 +67,9 @@ def data_explore() -> None:
         folium.Marker([CoordCentraleLat,CoordCentraleLon], popup="Centrale à bitume", tooltip="Centrale à bitume", icon=IconCentrale).add_to(m)
         st_data = st_folium(m, width=725)
 
-    # set time series
-    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
-    if TimeVision == 'Historique':
-        # set time series
-        print('in development')
-        #meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-        #date = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
-        #start_date = st.sidebar.date_input('Début de période', date[0]+datetime.timedelta(days=5))
-        #end_date = st.sidebar.date_input('Fin de période', date[len(date)-1])
-    elif TimeVision == 'Temps réel':
-        Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
-
-        Temperature = round(Temperature*100)/100
-        Pression    = round(Pression*100)/100
-        V_vents     = round(V_vents*100)/100
-        Dir_vents   = round(Dir_vents*100)/100
-        Raf_vents   = round(Raf_vents*100)/100
-
-        if IsDay==1: JourStatus ='jour'
-        else: JourStatus ='nuit'
-
-        TableParticule = pd.DataFrame(
-        [
-            {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
-            {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
-            {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
-            {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
-            {"Donnée": "Exposition Solaire",  "Valeur":SolarPower,         "Unité":'W/m²'},
-            {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
-            {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
-            {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
-            {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
-
-        ]
-        )
-
-        st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-    elif TimeVision == 'Prévisions':
-        tz = pytz.timezone('Europe/Paris')
-        now = datetime.now(tz)
-        month = now.month
-        if month < 10:
-            month = '0'+str(month)
-        day = now.day
-        if day < 10:
-            day = '0'+str(day)    
-        today = str(now.year)+'-'+str(month)+'-'+str(day)
-        today = datetime.strptime(today, '%Y-%m-%d').date()
-        DayMenu = [today + timedelta(days = i) for i in range(8)]
-        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
-
-        MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
-        
+    # set time series + get Data Meteo
+    MeteoData = Meteo_tool.MeteoByTimeChoice()
+    
 
     st.title('Informations complémentaires')
     col1, col2, col3 = st.columns(3)
@@ -143,4 +92,4 @@ st.markdown(
     
     """
 )
-data_explore()
+main()

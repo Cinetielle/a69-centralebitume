@@ -12,76 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-import numpy
-import streamlit as st
-from streamlit.hello.utils import show_code
-import pandas as pd
-import folium
-from streamlit_folium import st_folium
+from datetime import  datetime, timedelta
 from PIL import Image
+from typing import Any
+from streamlit_folium import st_folium
+from streamlit.hello.utils import show_code
+
+import folium
 import Functions.map_tool as map_tool
 import Functions.Meteo_tool as Meteo_tool
-from datetime import  datetime, timedelta
-import pytz
+import numpy
+import pandas as pd
+import streamlit as st
 
 LegendMap = Image.open('./im/mapLegend.png')
 
-def data_explore() -> None:
+def main() -> None:
     Earth_rad = 6371
     Distance = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=10.0, step=0.01)
-    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
-    if TimeVision == 'Historique':
-        print('in development')
-        #meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-        #date_tmp = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
-        #start_date = st.sidebar.date_input('Début de période', date_tmp[0]+datetime.timedelta(days=5))
-        #end_date = st.sidebar.date_input('Fin de période', date_tmp[len(date)-1])
-    elif TimeVision == 'Temps réel':
-        Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
 
-        Temperature = round(Temperature*100)/100
-        Pression    = round(Pression*100)/100
-        V_vents     = round(V_vents*100)/100
-        Dir_vents   = round(Dir_vents*100)/100
-        Raf_vents   = round(Raf_vents*100)/100
-
-        if IsDay==1: JourStatus ='jour'
-        else: JourStatus ='nuit'
-
-        TableParticule = pd.DataFrame(
-        [
-            {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
-            {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
-            {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
-            {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
-            {"Donnée": "Exposition nuageuse", "Valeur":SolarPower,         "Unité":'W/m²'},
-            {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
-            {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
-            {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
-            {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
-
-        ]
-        )
-
-        st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-    elif TimeVision == 'Prévisions':
-
-        tz = pytz.timezone('Europe/Paris')
-        now = datetime.now(tz)
-        month = now.month
-        if month < 10:
-            month = '0'+str(month)
-        day = now.day
-        if day < 10:
-            day = '0'+str(day)    
-        today = str(now.year)+'-'+str(month)+'-'+str(day)
-        today = datetime.strptime(today, '%Y-%m-%d').date()
-        DayMenu = [today + timedelta(days = i) for i in range(8)]
-        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
- 
-        MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
+    MeteoData = Meteo_tool.MeteoByTimeChoice()
 
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 
@@ -177,4 +127,4 @@ st.markdown(
     
     """
 )
-data_explore()
+main()

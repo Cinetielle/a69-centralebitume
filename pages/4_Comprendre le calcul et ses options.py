@@ -12,27 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
-
-import numpy as np
-import pandas as pd
-
-import streamlit as st
+from streamlit_folium import st_folium
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from PIL import Image
+from pyproj import Transformer
+from shapely.geometry import Polygon, MultiPolygon
 from streamlit.hello.utils import show_code
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from PIL import Image
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
 import branca.colormap as cmp
+import datetime
 import folium
-from streamlit_folium import st_folium
-from pyproj import Transformer
-
+import Functions.Calculs_tool as calculs
+import geopandas as gpd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
 import thermo
+
 
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
@@ -109,109 +107,6 @@ def topographie_zoom():
     ax.legend(loc='lower left')
     st.pyplot(fig)
 
-def Δh_Holland(Vs, v, d, Pa, Ts, Ta):
-    """
-
-    Parameters
-    ----------
-    Pa : TYPE
-        pression atmospherique en mbar
-    Vs : TYPE
-        vitesse des gaz en sortie de cheminée en m/s
-    v : TYPE
-        vitesse du vent à la hauteur de la cheminée en m/s
-    d : TYPE
-        Diamètre de la cheminée en m
-    Ts : TYPE
-        Température en sortie de cheminée en °K
-    Ta : TYPE
-        Temperature ambiante en °K
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    """
-    return Vs*d*(1.5+0.00268*Pa*d*((Ts-Ta)/(Ts+273.15)))/v
-
-def Δh_CarsonAndMoses(Vs, v, d, Qh):
-    """
-    Parameters
-    ----------
-    Vs : TYPE
-        vitesse des gaz en sortie de cheminée en m/s
-    v : TYPE
-        vitesse du vent à la hauteur de la cheminée en m/s
-    d : TYPE
-        Diamètre de la cheminée en m
-    Qh : TYPE
-        Débit de Chaleur en kJ/s
-
-    Returns
-    -------
-    TYPE
-        surélévation du panache
-    """
-    return -0.029*Vs*d/v + 2.62*np.sqrt(Qh)*d/v
-
-def Δh_Concawes(v, d, Qh):
-    """
-    Parameters
-    ----------
-    v : TYPE
-        vitesse du vent à la hauteur de la cheminée
-    d : TYPE
-        Diamètre de la cheminée
-    Qh : TYPE
-        Débit de Chaleur en kJ/s
-
-    Returns
-    -------
-    TYPE
-        surélévation du panache
-    """
-    return 2.71*np.sqrt(Qh)*d/v**(3/4)
-
-def Δh_Briggs(x, Vs, v, d, Ts, Ta):
-    """
-    Formule la plus utilisée
-
-    Parameters
-    ----------
-    x : TYPE
-        distance XY à la source
-    Vs : TYPE
-        vitesse des gaz en sortie de cheminée en m/s
-    v : TYPE
-        vitesse du vent à la hauteur de la cheminée en m/s
-    d : TYPE
-        Diamètre de la cheminée en m
-    Ts : TYPE
-        Température en sortie de cheminée en °C
-    Ta : TYPE
-        Temperature ambiante en °C
-
-    Returns
-    -------
-    res : TYPE
-        surélévation d’un panache émis par une source ponctuelle
-
-    """
-    #effet dynamique en m4/s2
-    Fm = (Ta * Vs**2 * (d/2)**2)/(Ts*4)
-    #effet de flottabilité en m4/s3
-    g = 9.81
-    Fb = (g*Vs*(d/2)**2*(Ts-Ta))/(Ts*4)
-    if Fb < 55:
-        #limite d'application de la surélévation
-        xf = 49*Fb**(5/8)
-    else:
-        xf = 119*Fb**(2/5)
-    res = (3*Fm*x/(0.36*v**2) + 4.17*Fb*x**2/v**3)**(1/3)
-    res[x > xf] = (3/(2*0.6**2))**(1/3) * (Fb**(1/3)*x[x>xf]**(2/3))/v
-    return res
-                                           
 def surelevation():
     global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
     td = meteo.index[-1]-meteo.index[0]
@@ -244,10 +139,10 @@ def surelevation():
     Qh = Hair*debit_masse_air  #débit de chaleur en kJ/s
 
     x = np.arange(0, xmax, 10)
-    briggs = Δh_Briggs(x, Vs, v, d, Ts, Ta)
-    Concawes = Δh_Concawes(v, d, Qh)
-    CarsonAndMoses = Δh_CarsonAndMoses(Vs, v, d, Qh)
-    Holland = Δh_Holland(Vs, v, d, Pa, Ts, Ta)
+    briggs = calculs.Δh_Briggs(x, Vs, v, d, Ts, Ta)
+    Concawes = calculs.Δh_Concawes(v, d, Qh)
+    CarsonAndMoses = calculs.Δh_CarsonAndMoses(Vs, v, d, Qh)
+    Holland = calculs.Δh_Holland(Vs, v, d, Pa, Ts, Ta)
 
     fig, ax = plt.subplots()
     ax.plot(x, briggs, label='Briggs')
@@ -259,220 +154,20 @@ def surelevation():
     ax.legend()
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
-
-def  stability_pasquill(v, RSI, HR, mode='24H'):
-    """
-    Définis les conditions suivantes et renvoi la stabilité de Pasquill en conséquence
-    'JOUR_RSI_fort', 'JOUR_RSI_modéré', 'JOUR_RSI_faible', 'NUIT_NEBULOSITE_4/8-7/8', 'NUIT_NEBULOSITE_<3/8'
-
-    Parameters
-    ----------
-    v : float
-        wind speed at 10m , m/s
-    RSI : float
-        RSI= rayonnement solaire incident moyen
-    HR : float
-        humidité relative
-        on fait l'hypothèse que si l'air au sol est sec (< 60 %) la nébuolisté équivaut à 'NUIT_NEBULOSITE_<3/8'
-        sinon la nébulosité équivaut à 'NUIT_NEBULOSITE_4/8-7/8'
-
-    mode : str, optional
-        '24H', '1H', '10M'
-        
-
-    Returns
-    -------
-    Pasquill stability
-    A : très instable
-    B: instable
-    C: peu instable
-    D: neutre
-    E:stable
-    F:très stable
-    """
-    if mode == "24H":
-        if RSI > 264:
-            RSI='JOUR_RSI_fort'
-        elif (RSI < 90):
-            RSI='JOUR_RSI_faible'
-        else:
-            RSI='JOUR_RSI_modéré'
-    else:
-        if RSI > 472:
-            RSI='JOUR_RSI_fort'
-        elif (RSI < 199) & (RSI > 0):
-            RSI='JOUR_RSI_faible'
-        elif (HR >= 60) & (RSI == 0):
-            RSI='NUIT_NEBULOSITE_<3/8'
-        elif (HR < 60) & (RSI == 0):
-            RSI='NUIT_NEBULOSITE_4/8-7/8'            
-        else:
-            RSI='JOUR_RSI_modéré'
-    
-    if v < 2:
-        if RSI=='JOUR_RSI_fort':
-            return 'A'
-        elif RSI=='JOUR_RSI_modéré':
-            return 'A-B'
-        elif RSI=='JOUR_RSI_faible':
-            return 'B'
-        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
-            return 'F'
-        elif RSI== 'NUIT_NEBULOSITE_<3/8':
-            return 'F'
-    elif (v >= 2) & (v < 3):
-        if RSI=='JOUR_RSI_fort':
-            return 'A-B'
-        elif RSI=='JOUR_RSI_modéré':
-            return 'B'
-        elif RSI=='JOUR_RSI_faible':
-            return 'C'
-        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
-            return 'E'
-        elif RSI== 'NUIT_NEBULOSITE_<3/8':
-            return 'F'
-    elif (v >= 3) & (v < 5):
-        if RSI=='JOUR_RSI_fort':
-            return 'B'
-        elif RSI=='JOUR_RSI_modéré':
-            return 'B-C'
-        elif RSI=='JOUR_RSI_faible':
-            return 'C'
-        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
-            return 'D'
-        elif RSI== 'NUIT_NEBULOSITE_<3/8':
-            return 'E'
-    elif (v >= 5) & (v < 6):
-        if RSI=='JOUR_RSI_fort':
-            return 'C'
-        elif RSI=='JOUR_RSI_modéré':
-            return 'C-D'
-        elif RSI=='JOUR_RSI_faible':
-            return 'D'
-        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
-            return 'D'
-        elif RSI== 'NUIT_NEBULOSITE_<3/8':
-            return 'D'
-    elif (v >= 6):
-        if RSI=='JOUR_RSI_fort':
-            return 'C'
-        elif RSI=='JOUR_RSI_modéré':
-            return 'D'
-        elif RSI=='JOUR_RSI_faible':
-            return 'D'
-        elif RSI=='NUIT_NEBULOSITE_4/8-7/8':
-            return 'D'
-        elif RSI== 'NUIT_NEBULOSITE_<3/8':
-            return 'D'
-    else:
-        print('Pasquill Stability error')
-        return 'D'
-    
-def sigma(stability, x):
-    """
-    application restricted to downwind distance < 10km
-    Parameters
-    ----------
-    stability : TYPE
-        pasquill stability
-    x : TYPE
-        downwind distance
-
-    Returns
-    -------
-    TYPE
-        return σy and σz
-        [[pasquill-gifford σy mode 1, np.nan], [pasquill-gifford σy mode 2, pasquill-gifford σz mode 2], [ASME79 σy mode 1, ASME79 σz mode 1],[Klug69 σy mode 1, Klug69 σz mode 1]]
-    """
-    empty = np.ones(x.shape)
-    empty[:, :] = np.nan
-
-    if stability == 'A':
-        A = np.asarray([[0.443*x**0.894, empty],
-                        [np.exp(-1.104+0.9878*np.log(x)-0.0076*np.log(x)**2) , np.exp(4.679-1.172*np.log(x)+0.227*np.log(x)**2)],
-                        [0.4*x**0.91, 0.4*x**0.91],
-                        [0.469*x**0.903, 0.017*x**1.38]])
-        return A
-    elif stability == 'A-B':
-        A = np.asarray([[0.443*x**0.894, empty],
-                        [np.exp(-1.104+0.9878*np.log(x)-0.0076*np.log(x)**2) , np.exp(4.679-1.172*np.log(x)+0.227*np.log(x)**2)],
-                        [0.4*x**0.91, 0.4*x**0.91],
-                        [0.469*x**0.903, 0.017*x**1.38]])
-        B = np.asarray([[0.324*x**0.894, empty],
-                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
-                        [0.36*x**0.86, 0.33*x**0.86],
-                        [0.306*x**0.885, 0.072*x**1.021]])
-        return (A+B)/2
-    elif stability == 'B':
-        B = np.asarray([[0.324*x**0.894, empty],
-                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
-                        [0.36*x**0.86, 0.33*x**0.86],
-                        [0.306*x**0.885, 0.072*x**1.021]])
-        return B
-    elif stability == 'B-C':
-        C = np.asarray([[0.216*x**0.894, empty],
-                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
-                        [empty, empty],
-                        [0.23*x**0.855, 0.076*x**0.879]])
-        B = np.asarray([[0.324*x**0.894, empty],
-                        [np.exp(-1.634+1.035*np.log(x)-0.0096*np.log(x)**2) , np.exp(-1.999+0.8752*np.log(x)+0.0136*np.log(x)**2)],
-                        [0.36*x**0.86, 0.33*x**0.86],
-                        [0.306*x**0.885, 0.072*x**1.021]])
-        return (C+B)/2
-    elif stability == 'C':
-        C = np.asarray([[0.216*x**0.894, empty],
-                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
-                        [empty, empty],
-                        [0.23*x**0.855, 0.076*x**0.879]])
-        return C
-    elif stability == 'C-D':
-        C = np.asarray([[0.216*x**0.894, empty],
-                        [np.exp(-2.054+1.0231*np.log(x)-0.0076*np.log(x)**2) , np.exp(-2.341+0.9477*np.log(x)-0.002*np.log(x)**2)],
-                        [empty, empty],
-                        [0.23*x**0.855, 0.076*x**0.879]])
-        D = np.asarray([[0.141*x**0.894, empty],
-                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
-                        [0.32*x**0.78, 0.22*x**0.78],
-                        [0.219*x**0.764, 0.140*x**0.727]])
-        return (C+D)/2
-    elif stability == 'D':
-        D = np.asarray([[0.141*x**0.894, empty],
-                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
-                        [0.32*x**0.78, 0.22*x**0.78],
-                        [0.219*x**0.764, 0.140*x**0.727]])
-        return D
-    elif stability == 'E':
-        E = np.asarray([[0.105*x**0.894, empty],
-                        [np.exp(-2.754+1.0106*np.log(x)-0.0064*np.log(x)**2) , np.exp(-3.783+1.301*np.log(x)-0.045*np.log(x)**2)],
-                        [empty, empty],
-                        [0.237*x**0.691, 0.217*x**0.61]])
-        return E
-    elif stability == 'F':
-        F = np.asarray([[0.071*x**0.894, empty],
-                        [np.exp(-3.143+1.0148*np.log(x)-0.007*np.log(x)**2) , np.exp(-4.49+1.4024*np.log(x)-0.054*np.log(x)**2)],
-                        [0.31*x**0.71, 0.06*x**0.71],
-                        [0.273*x**0.594, 0.262*x**0.5]])
-        return F
-    else:
-        D = np.asarray([[0.141*x**0.894, empty],
-                        [np.exp(-2.555+1.0423*np.log(x)-0.0087*np.log(x)**2) , np.exp(-3.186+1.1737*np.log(x)-0.0316*np.log(x)**2)],
-                        [0.32*x**0.78, 0.22*x**0.78],
-                        [0.219*x**0.764, 0.140*x**0.727]])
-        return D
-
+  
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
     x = np.linspace(100, xmax, 1000)
     x = x[:, np.newaxis]
-    A = sigma('A', x)
-    AB = sigma('A-B', x)
-    B = sigma('B', x)
-    BC = sigma('B-C', x)
-    C = sigma('C', x)
-    CD = sigma('C-D', x)
-    D = sigma('D', x)
-    E = sigma('E', x)
-    F = sigma('F', x)
+    A = calculs.sigma('A', x)
+    AB = calculs.sigma('A-B', x)
+    B = calculs.sigma('B', x)
+    BC = calculs.sigma('B-C', x)
+    C = calculs.sigma('C', x)
+    CD = calculs.sigma('C-D', x)
+    D = calculs.sigma('D', x)
+    E = calculs.sigma('E', x)
+    F = calculs.sigma('F', x)
 
     PG1 = st.checkbox("Pasquill & Gifford, mode 1", False)
     PG2 = st.checkbox("Pasquill & Gifford, mode 2", True)
@@ -561,13 +256,13 @@ def coupe_vertical():
     elif MCD =="Klug 1969, mode 1":
         i=3
     Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
-    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
+    SA_climatique = calculs.stability_pasquill(v, RSI, HR, mode='24H')
     liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
     SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
-    surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
-    sigma_val = sigma(SA, X)
+    surelevation = calculs.Δh_Briggs(X, Vs, v, d, Ts, Ta)
+    sigma_val = calculs.sigma(SA, X)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zx-19-surelevation
@@ -583,8 +278,8 @@ def coupe_vertical():
     Y, Zy = np.meshgrid(y, z)
     ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
     Xy = np.asarray([[Xy]])
-    surelevation = Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
-    sigma_val = sigma(SA, Xy)
+    surelevation = calculs.Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
+    sigma_val = calculs.sigma(SA, Xy)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zy-19-surelevation
@@ -623,8 +318,6 @@ def collec_to_gdf(collec_poly):
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
     
-
-
 def carte_stationnaire():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -637,7 +330,7 @@ def carte_stationnaire():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx))
-    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -646,7 +339,7 @@ def carte_stationnaire():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = sigma(SA_climatique, downwind)
+    sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
@@ -689,10 +382,6 @@ def carte_stationnaire():
     
     thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
 
-
-
-
-
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -705,7 +394,7 @@ def carte_bouffee():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx, 24))
-    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -714,7 +403,7 @@ def carte_bouffee():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = sigma(SA_climatique, downwind)
+    sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)

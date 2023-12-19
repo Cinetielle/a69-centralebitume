@@ -12,13 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+========
+
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 from streamlit_folium import st_folium
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image
 from pyproj import Transformer
 from shapely.geometry import Polygon, MultiPolygon
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
 from streamlit.hello.utils import show_code
 
+========
+
+import branca.colormap as cmp
+
+import numpy as np
+import pandas as pd
+
+import streamlit as st
+from utils import show_code, Δh_Briggs, Δh_Concawes, Δh_CarsonAndMoses, Δh_Holland, stability_pasquill, sigma
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+from PIL import Image
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from datetime import datetime, timedelta
+import geopandas as gpd
+from shapely.geometry import Polygon, MultiPolygon
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 import branca.colormap as cmp
 import datetime
 import folium
@@ -110,15 +133,28 @@ def topographie_zoom():
 def surelevation():
     global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
     td = meteo.index[-1]-meteo.index[0]
-    date_meteo_increment =  st.sidebar.slider("Choisir rapidement une nouvelle journée après le 6 mars 2021", value=0, min_value=0, max_value=td.days, step=1)
-    date_meteo = st.sidebar.date_input("Choisir la météo d'une journée particulière", pd.to_datetime('2021/03/06')+datetime.timedelta(days=date_meteo_increment))
+    st.sidebar.write("Choisir la météo d'une journée particulière:")
+    
+    def update_date_meteo():
+        st.session_state.date_meteo = pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment)
+        
+    try:
+        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=(pd.to_datetime(st.session_state.date_meteo)-pd.to_datetime('2021/03/06')).days, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
+    except:
+        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=0, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
+        
+    st.sidebar.date_input("A l'aide du calendrier :", pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment), key='date_meteo')
+
+    
+    date_meteo = st.session_state.date_meteo
+    
     debut_jour = pd.to_datetime(date_meteo)
-    fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=1)
+    fin_jour = pd.to_datetime(date_meteo)+timedelta(days=1)
 
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
     xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
-    Vs = st.sidebar.slider(r"Choisir la vitesse $m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
     d = 1.35
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
 
@@ -154,11 +190,16 @@ def surelevation():
     ax.legend()
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
   
+========
+
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
     x = np.linspace(100, xmax, 1000)
     x = x[:, np.newaxis]
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
     A = calculs.sigma('A', x)
     AB = calculs.sigma('A-B', x)
     B = calculs.sigma('B', x)
@@ -168,6 +209,18 @@ def plot_dispersion():
     D = calculs.sigma('D', x)
     E = calculs.sigma('E', x)
     F = calculs.sigma('F', x)
+========
+
+    A = sigma('A', x)
+    #AB = sigma('A-B', x)
+    B = sigma('B', x)
+    #BC = sigma('B-C', x)
+    C = sigma('C', x)
+    #CD = sigma('C-D', x)
+    D = sigma('D', x)
+    E = sigma('E', x)
+    F = sigma('F', x)
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
     PG1 = st.checkbox("Pasquill & Gifford, mode 1", False)
     PG2 = st.checkbox("Pasquill & Gifford, mode 2", True)
@@ -272,7 +325,6 @@ def coupe_vertical():
     plt.colorbar(f, ax=ax, orientation='horizontal').set_label(r'Facteur de dilution en $log_{10}$')
     ax.set_xlabel("Distance à la cheminée (m)")
     ax.set_ylabel("Altitude parallèlement \n à la direction du vent")
-   
 
     y = np.arange(-2000, 2000, 4)
     Y, Zy = np.meshgrid(y, z)
@@ -317,7 +369,11 @@ def collec_to_gdf(collec_poly):
             polygons.append(mpoly[0])
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
     
+========
+
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def carte_stationnaire():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -357,6 +413,19 @@ def carte_stationnaire():
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
     cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
     st.pyplot(fig)
+    
+    AIR = thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
+    VM = AIR.zs/AIR.Vm # mol/m3
+    maxCCO2 =  np.nanmax(C)*5E6/3600 # g/m3
+    max_molCO2 = maxCCO2/thermo.chemical.Mixture('CO2', T=273.15+Ta, P=Pa*1E2).MW # mol/m3
+    CO2_increase = max_molCO2/VM[3]
+    st.markdown("Le facteur de dilution maximum au sol avec les limites considérées est de :", unsafe_allow_html=True)
+    st.markdown(f'<p style="color:Black; font-size: 40px;"> {np.nanmax(C):.2e}</p>', unsafe_allow_html=True)
+    st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième):", unsafe_allow_html=True)
+    st.markdown(r"Cela équivaut (pour un rejet moyen de 5 $t.h^{-1}$), dans les limites du modèle, à une augmentation moyenne (maximum) du CO2 dans l'air de ($mol.m^3$) :", unsafe_allow_html=True)
+    st.markdown(f"<p><span style='font-size: 40px;'> {max_molCO2:.2e} (<span style='color:Red; font-size: 40px;'>&#8679; {CO2_increase:.2%}</span>)</span></p> ", unsafe_allow_html=True)
+
+
     #folium map 
     cmap = mpl.colormaps['nipy_spectral']
     norm = mpl.colors.LogNorm(vmin=1E-15, vmax=1E-2)
@@ -380,7 +449,10 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
     thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
+========
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)
@@ -531,7 +603,7 @@ st.markdown(
 
     #### Les données météorologiques
     <p>
-    Les données météorologiques passées sont présentées dans une <a href='StationMeteoPuylaurens' target='_self'>page dédiée</a>.
+    Les données météorologiques passées sont présentées dans une <a href="La_Station_Météo_de_Puylaurens" target='_self'>page dédiée</a>.
     </p>
     <p>
     Il est également prévu l'intégration des prévisions météorologiques de Puylaurens.
@@ -559,7 +631,7 @@ st.markdown("""
     ### Les données sur l'émission de la centrale à bitume
     <div style="text-align: justify;">
     <p>
-    Les données sur les produits émis par la centrale à bitume sont présentées dans une <a href='EmissionsCentrale' target='_self'>page dédiée</a>.
+    Les données sur les produits émis par la centrale à bitume sont présentées dans une <a href='Emissions_de_la_centrale' target='_self'>page dédiée</a>.
     </p>
     <p>
     Nous retiendrons ici les paramètres suivants pour la centrale de Puylaurens (RF500), tel que mentionné dans les documents techniques (pièce E6) :
@@ -730,7 +802,7 @@ carte_stationnaire()
 st.markdown("""
         ### Le calcul par bouffée
             
-        Le calcul stationnaire repose sur les valeurs météorologiques moyennes de la journée. Elle suppose leur variation faible.
+        En cours de construction.
         """
     , unsafe_allow_html=True
 )

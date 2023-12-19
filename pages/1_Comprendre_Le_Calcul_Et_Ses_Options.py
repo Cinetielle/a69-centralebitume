@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+from datetime import datetime, timedelta
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
 import branca.colormap as cmp
@@ -123,20 +123,20 @@ def surelevation():
     st.sidebar.write("Choisir la météo d'une journée particulière:")
     
     def update_date_meteo():
-        st.session_state.date_meteo = pd.to_datetime('2021/03/06')+datetime.timedelta(days=st.session_state.increment)
+        st.session_state.date_meteo = pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment)
         
     try:
         st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=(pd.to_datetime(st.session_state.date_meteo)-pd.to_datetime('2021/03/06')).days, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
     except:
         st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=0, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
         
-    st.sidebar.date_input("A l'aide du calendrier :", pd.to_datetime('2021/03/06')+datetime.timedelta(days=st.session_state.increment), key='date_meteo')
+    st.sidebar.date_input("A l'aide du calendrier :", pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment), key='date_meteo')
 
     
     date_meteo = st.session_state.date_meteo
     
     debut_jour = pd.to_datetime(date_meteo)
-    fin_jour = pd.to_datetime(date_meteo)+datetime.timedelta(days=1)
+    fin_jour = pd.to_datetime(date_meteo)+timedelta(days=1)
 
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
@@ -566,7 +566,7 @@ st.markdown(
 
     #### Les données météorologiques
     <p>
-    Les données météorologiques passées sont présentées dans une <a href='StationMeteoPuylaurens' target='_self'>page dédiée</a>.
+    Les données météorologiques passées sont présentées dans une <a href="La_Station_Météo_de_Puylaurens" target='_self'>page dédiée</a>.
     </p>
     <p>
     Il est également prévu l'intégration des prévisions météorologiques de Puylaurens.
@@ -594,7 +594,7 @@ st.markdown("""
     ### Les données sur l'émission de la centrale à bitume
     <div style="text-align: justify;">
     <p>
-    Les données sur les produits émis par la centrale à bitume sont présentées dans une <a href='EmissionsCentrale' target='_self'>page dédiée</a>.
+    Les données sur les produits émis par la centrale à bitume sont présentées dans une <a href='Emissions_de_la_centrale' target='_self'>page dédiée</a>.
     </p>
     <p>
     Nous retiendrons ici les paramètres suivants pour la centrale de Puylaurens (RF500), tel que mentionné dans les documents techniques (pièce E6) :

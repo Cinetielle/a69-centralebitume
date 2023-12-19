@@ -33,10 +33,10 @@ LegendMap = Image.open('./im/mapLegend.png')
 def surelevation(meteo):
     global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent
     debut_jour = st.sidebar.date_input("Choisir le jour de début des émissions :", pd.to_datetime('2021/03/06'), key='start')
-    if (meteo.index[-1]-pd.to_datetime(st.session_state.start)).days < 120:
+    if (meteo.index[-1]-pd.to_datetime(st.session_state.start)).days < 30*6:
         increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=1, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
     else:
-        increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=120, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
+        increment = st.sidebar.slider("Choisir la durée d'exposition (en jours):", value=30*6, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
 
     fin_jour = pd.to_datetime(st.session_state.start)+timedelta(days=increment)
 
@@ -46,17 +46,20 @@ def surelevation(meteo):
     d = 1.35
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
 
-    v = meteo_slice.iloc[:, 3].mean()/3.6 # vitesse du vent en m/s
-    Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
-    Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
-    RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
-    HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
+    v = meteo_slice.iloc[:, 3].resample('d').mean()/3.6 # vitesse du vent en m/s
+    Pa = meteo_slice.iloc[:, 4].resample('d').mean()  # pression atmosphérique en Pa
+    Ta = meteo_slice.iloc[:, 0].resample('d').mean() # température de l'air en °C
+    RSI = meteo_slice.iloc[:, 7].resample('d').mean()  # insolation solaire moyenne sur 24H
+    HR = meteo_slice.iloc[:, 2].resample('d').mean() # Humidité moyenne sur 24H
 
     #vecteur vent
-    vdir = meteo_slice.iloc[:, 4].to_numpy()
-    vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
+    meteo_slice['vdir_cos']=np.cos(meteo_slice.iloc[:, 4]*np.pi/180)
+    meteo_slice['vdir_sin']=np.sin(meteo_slice.iloc[:, 4]*np.pi/180)
     
-    vVent = (meteo_slice.iloc[:, 3].to_numpy()[:, np.newaxis]/3.6)*vVent
+    vVent = np.asarray([meteo_slice['vdir_sin'].resample('d').mean().to_numpy(), meteo_slice['vdir_cos'].resample('d').mean().to_numpy()]).T*-1
+    
+    vVent = (meteo_slice.iloc[:, 3].resample('d').mean().to_numpy()[:, np.newaxis]/3.6)*vVent
+
     
 def Historique():
     RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
@@ -84,6 +87,15 @@ def Historique():
     
     surelevation(meteo)
     
+    st.markdown("""
+                
+        ## Historique des données météorologiques : impact sur les émissions 
+        
+        <p> Pour les calculs suivant nous utilisons les modèles de Briggs et de Pasquill & Grifford (mode 2). Pour plus d'information se reporter au chapitre <a href='Comprendre_Le_Calcul_Et_Ses_Options' target='_self'>détaillant le calcul et ses options</a>
+        """, unsafe_allow_html=True)
+        
+    
+        
 def Tps_réel():
     Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
 

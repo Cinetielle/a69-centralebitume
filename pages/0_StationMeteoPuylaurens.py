@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 
 import streamlit as st
-from streamlit.hello.utils import show_code
+from utils import show_code
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
@@ -200,7 +200,7 @@ def plot_for_pasquill():
     ax.set_xlabel('Insolation (W/m2)')
     ax.set_ylabel('Vitesse du vent (m/s)')
     ax.set_facecolor('k')
-    cbar = plt.colorbar(f, ax= ax, orientation='horizontal').set_label('Humidité (%)')
+    plt.colorbar(f, ax= ax, orientation='horizontal').set_label('Humidité (%)')
     st.pyplot(fig)
 
     fig2, ax2 = plt.subplots()
@@ -208,10 +208,9 @@ def plot_for_pasquill():
     ax2.set_xlabel('Insolation (W/m2)')
     ax2.set_ylabel('Vitesse du vent (m/s)')
     ax2.set_facecolor('k')
-    cbar2 = plt.colorbar(f2, ax= ax2, orientation='horizontal').set_label('Humidité (%)')
+    plt.colorbar(f2, ax= ax2, orientation='horizontal').set_label('Humidité (%)')
     st.pyplot(fig2)
 
-    
 
 def data_explore():
 

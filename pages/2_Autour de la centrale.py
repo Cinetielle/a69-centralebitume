@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import Any
-import numpy
+import numpy as np
 import streamlit as st
 from streamlit.hello.utils import show_code
 import pandas as pd
@@ -24,65 +24,113 @@ import Functions.map_tool as map_tool
 import Functions.Meteo_tool as Meteo_tool
 from datetime import  datetime, timedelta
 import pytz
+from pyproj import Transformer
+from utils import Δh_Briggs, stability_pasquill, sigma
+
 
 LegendMap = Image.open('./im/mapLegend.png')
 
-def data_explore() -> None:
-    Earth_rad = 6371
-    Distance = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=10.0, step=0.01)
-    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
-    if TimeVision == 'Historique':
-        print('in development')
-        #meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
-        #date_tmp = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
-        #start_date = st.sidebar.date_input('Début de période', date_tmp[0]+datetime.timedelta(days=5))
-        #end_date = st.sidebar.date_input('Fin de période', date_tmp[len(date)-1])
-    elif TimeVision == 'Temps réel':
-        Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
+def surelevation(meteo):
+    global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent
+    debut_jour = st.sidebar.date_input("Choisir le jour de début des émissions :", pd.to_datetime('2021/03/06'), key='start')
+    if (meteo.index[-1]-pd.to_datetime(st.session_state.start)).days < 120:
+        increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=1, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
+    else:
+        increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=120, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
 
-        Temperature = round(Temperature*100)/100
-        Pression    = round(Pression*100)/100
-        V_vents     = round(V_vents*100)/100
-        Dir_vents   = round(Dir_vents*100)/100
-        Raf_vents   = round(Raf_vents*100)/100
+    fin_jour = pd.to_datetime(st.session_state.start)+timedelta(days=increment)
 
-        if IsDay==1: JourStatus ='jour'
-        else: JourStatus ='nuit'
+    filtre = (meteo.index >= pd.to_datetime(st.session_state.start)) & (meteo.index <= fin_jour)
+    meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
+    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    d = 1.35
+    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
 
-        TableParticule = pd.DataFrame(
-        [
-            {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
-            {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
-            {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
-            {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
-            {"Donnée": "Exposition nuageuse", "Valeur":SolarPower,         "Unité":'W/m²'},
-            {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
-            {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
-            {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
-            {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
+    v = meteo_slice.iloc[:, 3].mean()/3.6 # vitesse du vent en m/s
+    Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
+    Ta = meteo_slice.iloc[:, 0].mean() # température de l'air en °C
+    RSI = meteo_slice.iloc[:, 7].mean()  # insolation solaire moyenne sur 24H
+    HR = meteo_slice.iloc[:, 2].mean() # Humidité moyenne sur 24H
 
-        ]
-        )
+    #vecteur vent
+    vdir = meteo_slice.iloc[:, 4].to_numpy()
+    vVent = np.asarray([np.sin(vdir*np.pi/180), np.cos(vdir*np.pi/180)]).T*-1
+    
+    vVent = (meteo_slice.iloc[:, 3].to_numpy()[:, np.newaxis]/3.6)*vVent
+    
+def Historique():
+    RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
+    WGS84_to_RGF93 = Transformer.from_crs('4326', '2154', always_xy=True)
+    #coordonnée de la sortie de cheminée
+    #-5 mètre pour intégrer le décaissement
+    x0, y0, z0 = 623208.070, 6273468.332, 230-5+19
 
-        st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
+    alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
+    filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
+    alt = alt.loc[filtre, :]
+    vx, vy = np.unique(alt.loc[:, 0]), np.unique(alt.loc[:, 1])
+    nx, ny = len(vx), len(vy)
+    Z = np.zeros((ny, nx))
+    idY, idX = (alt.loc[:, 1]-vy.min())/75, (alt.loc[:, 0]-vx.min())/75
+    Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
+    X, Y = np.meshgrid(vx, vy)
+    X_, Y_, Z_ = X-x0, Y-y0, Z-z0
+    dist_XY = np.sqrt(X_**2+Y_**2)
+    extent = [X[dist_XY < xmax*1E3].min(), X[dist_XY < xmax*1E3].max(), Y[dist_XY < xmax*1E3].min(), Y[dist_XY < xmax*1E3].max()]
+    Z[dist_XY < xmax*1E3] = np.nan
+    
+    meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
+    meteo.index = pd.to_datetime(meteo.iloc[:, :5])
+    
+    surelevation(meteo)
+    
+def Tps_réel():
+    Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
 
-    elif TimeVision == 'Prévisions':
+    Temperature = round(Temperature*100)/100
+    Pression    = round(Pression*100)/100
+    V_vents     = round(V_vents*100)/100
+    Dir_vents   = round(Dir_vents*100)/100
+    Raf_vents   = round(Raf_vents*100)/100
 
-        tz = pytz.timezone('Europe/Paris')
-        now = datetime.now(tz)
-        month = now.month
-        if month < 10:
-            month = '0'+str(month)
-        day = now.day
-        if day < 10:
-            day = '0'+str(day)    
-        today = str(now.year)+'-'+str(month)+'-'+str(day)
-        today = datetime.strptime(today, '%Y-%m-%d').date()
-        DayMenu = [today + timedelta(days = i) for i in range(8)]
-        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
+    if IsDay==1: JourStatus ='jour'
+    else: JourStatus ='nuit'
+
+    TableParticule = pd.DataFrame(
+    [
+        {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
+        {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
+        {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
+        {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
+        {"Donnée": "Exposition nuageuse", "Valeur":SolarPower,         "Unité":'W/m²'},
+        {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
+        {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
+        {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
+        {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
+
+    ]
+    )
+
+    st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+def Prévisions():
+    tz = pytz.timezone('Europe/Paris')
+    now = datetime.now(tz)
+    month = now.month
+    if month < 10:
+        month = '0'+str(month)
+    day = now.day
+    if day < 10:
+        day = '0'+str(day)    
+    today = str(now.year)+'-'+str(month)+'-'+str(day)
+    today = datetime.strptime(today, '%Y-%m-%d').date()
+    DayMenu = [today + timedelta(days = i) for i in range(8)]
+    ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
  
-        MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
+    MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
 
+def Carte():
+    Earth_rad = 6371 #km
     DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
 
     DataGPS = DataGPS.astype({"Lat":"float"})
@@ -92,14 +140,14 @@ def data_explore() -> None:
     CoordCentraleLat = interestingRow["Lat"]
     CoordCentraleLon = interestingRow["Longi"]
 
-    max_delta =  Distance/ (numpy.pi * Earth_rad*2 / 360)
+    max_delta =  xmax/ (np.pi * Earth_rad*2 / 360)
     zoom_lvl = map_tool.ZoomLvl(max_delta)
 
     MapTiles = map_tool.SwitchMapStyle()
 
     m = folium.Map(location=[CoordCentraleLat,CoordCentraleLon], zoom_start=zoom_lvl, tiles="OpenStreetMap")
     m._children['openstreetmap'].tiles=MapTiles
-    folium.Circle(location=[CoordCentraleLat,CoordCentraleLon], fill_color='#000', radius=Distance*1000, weight=2, color="#000").add_to(m)
+    folium.Circle(location=[CoordCentraleLat,CoordCentraleLon], fill_color='#000', radius=xmax*1000, weight=2, color="#000").add_to(m)
 
     lgd_txt = '<span style="color: {col};">{txt}</span>'
 
@@ -111,13 +159,13 @@ def data_explore() -> None:
     Ecole_effectif = 0
     EHPAD_effectif = 0
     Creche_effectif = 0
-
+    
     #Affichage des markers
     for i in range(len(DataGPS)):
         Type=DataGPS.Type[i]
         DistanceBat = map_tool.DistanceAB_Earth(CoordCentraleLat,DataGPS.Lat[i],CoordCentraleLon,DataGPS.Longi[i])
         
-        if float(DistanceBat)<=float(Distance):    
+        if float(DistanceBat)<=float(xmax):    
             Message=DataGPS.Batiment[i]+" - "+DataGPS.Ville[i]
             Effectif_CurBat =float( DataGPS.Effectif[i])
             if Type==0:
@@ -167,6 +215,20 @@ def data_explore() -> None:
         st.image(LegendMap, caption="Légende des différentes routes affichées",width=350)
     with col3:
         st.write("")
+        
+def data_explore():
+    global xmax
+    xmax = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=20.0, step=0.01)
+    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
+    if TimeVision == 'Historique':
+        Historique()
+
+    elif TimeVision == 'Temps réel':
+        Tps_réel()
+
+    elif TimeVision == 'Prévisions':
+        Prévisions()
+
 
 st.set_page_config(page_title="Autour de la centrale", page_icon="")
 st.markdown("# Impacts de la centrale à bitume pour un rayon précis")

@@ -13,12 +13,24 @@
 # limitations under the License.
 
 from typing import Any
+<<<<<<< HEAD:pages/0_StationMeteoPuylaurens.py
 
+=======
+<<<<<<< HEAD:pages/5_Station méteo Puylaurens.py
+from streamlit.hello.utils import show_code
+
+=======
+
+>>>>>>> 98619de (B):pages/5_Station méteo Puylaurens.py
 import numpy as np
 
 import streamlit as st
 from utils import show_code
 import pandas as pd
+<<<<<<< HEAD:pages/0_StationMeteoPuylaurens.py
+=======
+>>>>>>> ac53ce1 (B):pages/0_StationMeteoPuylaurens.py
+>>>>>>> 98619de (B):pages/5_Station méteo Puylaurens.py
 import datetime
 import matplotlib.pyplot as plt
 import scipy
@@ -211,7 +223,14 @@ def plot_for_pasquill():
     plt.colorbar(f2, ax= ax2, orientation='horizontal').set_label('Humidité (%)')
     st.pyplot(fig2)
 
+<<<<<<< HEAD:pages/0_StationMeteoPuylaurens.py
 
+=======
+<<<<<<< HEAD:pages/5_Station méteo Puylaurens.py
+=======
+
+>>>>>>> ac53ce1 (B):pages/0_StationMeteoPuylaurens.py
+>>>>>>> 98619de (B):pages/5_Station méteo Puylaurens.py
 def data_explore():
 
     # set time series

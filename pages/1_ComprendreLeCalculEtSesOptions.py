@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
+
+from streamlit_folium import st_folium
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from PIL import Image
+from pyproj import Transformer
+from shapely.geometry import Polygon, MultiPolygon
+
+import branca.colormap as cmp
 
 import numpy as np
 import pandas as pd
@@ -109,7 +116,7 @@ def topographie_zoom():
     plt.ylim(extent[2], extent[3])
     ax.legend(loc='lower left')
     st.pyplot(fig)
-                                           
+
 def surelevation():
     global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
     td = meteo.index[-1]-meteo.index[0]
@@ -171,11 +178,11 @@ def surelevation():
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
 
-
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
     x = np.linspace(100, xmax, 1000)
     x = x[:, np.newaxis]
+
     A = sigma('A', x)
     #AB = sigma('A-B', x)
     B = sigma('B', x)
@@ -409,8 +416,6 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
-
-
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)

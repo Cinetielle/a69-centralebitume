@@ -197,7 +197,7 @@ def surelevation():
 >>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
-    x = np.linspace(100, xmax, 1000)
+    x = np.linspace(0, xmax, 1000)
     x = x[:, np.newaxis]
 <<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
     A = calculs.sigma('A', x)
@@ -300,7 +300,7 @@ def plot_dispersion():
 def coupe_vertical():
     global SA, SA_climatique
     zmax = st.slider("Choisir l'altitude maximum à représenter :", value=1000, min_value=100, max_value=20000, step=100)
-    z = np.linspace(0, zmax, 500)
+    z = np.linspace(0, zmax, 1000)
     MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=0)
     if MCD =="Pasquill & Gifford, mode 2":
         i=1
@@ -321,6 +321,7 @@ def coupe_vertical():
     newZ = Zx-19-surelevation
     C = (np.exp(-Y**2/(2*sigmay**2))*np.exp(-(newZ)**2/(2*sigmaz**2)))/(v*sigmay*sigmaz*2*np.pi)
     fig, ax = plt.subplots()
+    #ax.imshow(newZ, extent=[X.min(), X.max(), Zx.min(), Zx.max()], origin='lower', cmap='nipy_spectral', aspect=X.max()/(2*Zx.max()))
     f =ax.imshow(np.log10(C), extent=[X.min(), X.max(), Zx.min(), Zx.max()], origin='lower', vmin=-15, vmax=0, cmap='nipy_spectral', aspect=X.max()/(2*Zx.max()))
     plt.colorbar(f, ax=ax, orientation='horizontal').set_label(r'Facteur de dilution en $log_{10}$')
     ax.set_xlabel("Distance à la cheminée (m)")
@@ -398,7 +399,7 @@ def carte_stationnaire():
     sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
-    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
+    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
     fig, ax = plt.subplots(figsize=(10, 10))
     contour_log10 = np.arange(-15.,-2.)
     contour = [10**i for i in contour_log10]
@@ -421,7 +422,7 @@ def carte_stationnaire():
     CO2_increase = max_molCO2/VM[3]
     st.markdown("Le facteur de dilution maximum au sol avec les limites considérées est de :", unsafe_allow_html=True)
     st.markdown(f'<p style="color:Black; font-size: 40px;"> {np.nanmax(C):.2e}</p>', unsafe_allow_html=True)
-    st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième):", unsafe_allow_html=True)
+    st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième)", unsafe_allow_html=True)
     st.markdown(r"Cela équivaut (pour un rejet moyen de 5 $t.h^{-1}$), dans les limites du modèle, à une augmentation moyenne (maximum) du CO2 dans l'air de ($mol.m^3$) :", unsafe_allow_html=True)
     st.markdown(f"<p><span style='font-size: 40px;'> {max_molCO2:.2e} (<span style='color:Red; font-size: 40px;'>&#8679; {CO2_increase:.2%}</span>)</span></p> ", unsafe_allow_html=True)
 
@@ -478,12 +479,13 @@ def carte_bouffee():
     sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
-    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] + Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
+    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
     fig, ax = plt.subplots(figsize=(10, 10))
     contour = np.arange(-15.,-2.)
     contour = [10**i for i in contour]
     ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
     im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
+
     ax.scatter(x0, y0, c='crimson', zorder=3)
     for n, l in villes.items():
         ax.scatter(l[0], l[1], c='w', zorder=2)

@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec 21 09:09:06 2023
+
+@author: m_a_m
+"""
+
+#en g/s
+emission_ATOSCA = {"Poussières totale":280/3600,
+                   "CO2":4954000/3600,
+                   "CH4":43/3600,
+                   "CO":800/3600,
+                   "SOx":8100/3600,
+                   "NOx":5000/3600,
+                   "COV hors CH4":63/3600,
+                   "COV spécifique":1/3600,
+                   "HAP":0.006/3600,
+                   "Cadmium (Cd)":0.006/3600,
+                   "Thallium (Tl)":0/3600,
+                   "Mercure (Hg)":0.047/3600,
+                   "Arsenic (As)":0.0033/3600,
+                   "Plomb (Pb)":0.09/3600,
+                   "Chrome (Cr)":0.21/3600,
+                   "Antimoine (Sb)":0/3600,
+                   "Cobalt (Co)":0.04/3600,
+                   "Cuivre (Cu)":0.08/3600,
+                   'Etain (Sn)':0.003/3600,
+                   'Manganèse (Mn)':0.5/3600,
+                   "Nickel (Ni)":0.07/3600,
+                   "Sellenium (Se)":0/3600,
+                   "Tellure (Te)":0/3600,
+                   "Vanadium (V)":0.013/3600,
+                   "Zinc (Zn)":1.34/3600,
+                   "Benzo(a)pyrène + Naphtalène":0/3600,
+                   "Fluoranthène":0.0011/3600, #HAP
+                   "Benzo-a-anthracène":0/3600,
+                   "Benzo-b-Fluoranthène":0/3600,
+                   "Benzo-k-Fluoranthène":0/3600,
+                   "Benzo-a-pyrène":0/3600,
+                   "Dibenzo-a,h-anthracène":0/3600,
+                   "Benzo-g,h,i-pérylène":0/3600,
+                   "Indeno-1.2.3,c,d-pyrène":0/3600,
+                   "Formaldéhyde":11/3600, #Aldhéyde
+                   "Acétaldéhyde":0.4/3600,
+                   "Acroléine":0.4/3600,
+                   "Furfural":0/3600,
+                   "Chloroacétaldéhyde":0/3600,
+                   "1,1,2-Trichloroéthane":0/3600, #COV spécifique
+                   "1,1,2,2-Tétrachloroéthane":0/3600,
+                   '1,1-dichloroéthène':0/3600,
+                   "1.2-Dicholorobenzène":0/3600,
+                   "1,4-dioxane":0/3600,
+                   "Benzene (71-43-2)":1/3600,
+                   "Biphényl":0/3600,
+                   "Chloroforme":0/3600,
+                   "Chlorométhane":0/3600,
+                   "Chlorure de benzyle":0/3600,
+                   "Dichlorométhane":0/3600,
+                   "Méthacrylate":0/3600,
+                   "Méthacrylate de méthyle":0/3600,
+                   "Tétrachloroéthylène":0/3600,
+                   "Tétrachlorométhane":0/3600,
+                   "trichloroéthylène":0/3600,
+                   "Pyridine":0/3600,
+                   "Diméthylsulfide":0/3600,
+                   "Dimethyldisulfide":0/3600,
+                   "2-Butanthiol":0.48/3600, #mercaptan
+                   "2-Propantiol":0.48/3600,
+                   "Butylmercaptan":0.48/3600,
+                   "Ethylmercaptan":0.48/3600,
+                   "Méthylmercaptan (Methanethiol)":0.48/3600,
+                   "Propylmecaptan":0.48/3600,
+                   "ter-Butyl mercaptan":0.48/3600,
+                   "1,3 Butadiène (H340-H350)":0/3600,#TENEUR EN COMPOSES A PHRASES DE RISQUES
+                   "Benzène (H340-H350)":0/3600,
+                   "Dichlorométhane (H351)":0/3600,
+                   "Tétrahydrofuran (H351)":0/3600,
+                   "1,2-diethoxyethane (H360)":0/3600,
+                   "Ethylbromide (H351)":0/3600,
+                   "1,4-dichlorobenzene (H351)":0/3600,
+                   "2,4-TDI (2,4-diisocyanate de toluène":0/3600, #ISOCYANATES
+                   "Acide acrylique":22/3600,#AMINES ET ACIDES GRAS
+                   "Acide chloroacétique":22/3600,
+                   "Anhydre maléique":22/3600,
+                   "Diéthylamine":2.2/3600,
+                   "Ethylamine":2.2/3600,
+                   "Triéthylamine":2.2/3600,
+                   "Diméthylamine":2.2/3600,
+                   "aniline":0/3600, #ANILINES
+                   "o-Toluidine":0/3600,
+                   "2,3-Diméthylphénol":0.055/3600,#COMPOSES NITRIQUES
+                   "2,4,5-Trichlorophénol":0.055/3600,
+                   "2,4,6-Trichlorophénol":0.055/3600,
+                   "2,4-Dichlorophénol":0.055/3600,
+                   "Phénol 2-nitro":0.27/3600,
+                   "2,5-Diméthylphénol":0.055/3600,
+                   "2,6-Diméthylphénol":0.055/3600,
+                   "2-Méthylphénol (o-crésol)":0.16/3600,
+                   "3-Méthylphénol (m-crésol)":0.16/3600,
+                   "2-Nitrotoluène":0.27/3600,
+                   "3,4-Diméthylphénol":0.055/3600,
+                   "3,5-Diméthylphénol":0.055/3600,
+                   "4-Nitrotoluène":0.27/3600,
+                   "3-Nitrotoluène":0.27/3600,
+                   "4-Méthyl-2-nitrophénol":0.27/3600,
+                   "4-Méthylphénol (p-crésol)":0.055/3600,
+                   "Phénol":0.055/3600,
+                   "Nitrobenzène":0.27/3600
+                   }
+test = list(emission_ATOSCA.keys())
+emission_CAREPS_moy = {"Poussières totale":840/3600,
+                       "CO":15690/3600,
+                       "SOx":1710/3600,
+                       "NOx":2690/3600,
+                       "COV hors CH4":2490/3600}

@@ -26,12 +26,37 @@ from datetime import  datetime, timedelta
 import pytz
 from pyproj import Transformer
 from utils import Δh_Briggs, stability_pasquill, sigma
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import geopandas as gpd
 
+from DATA.EMISSIONS_CENTRALES import emission_ATOSCA, emission_CAREPS_moy #en g/m3
+from DATA.VTR_ERU import Composés
+
+villes = {'Revel': [619399.490,6262672.707],
+         'Puylaurens':[620266.862,6275241.681],
+         'St Germain-des-prés': [624500.311,6274095.737],
+         'Soual':[628528.524,6273191.962],
+         'Lempaut':[624346.252,6270432.622],
+         'Sémalens':[628217.241,6277447.042],
+         'Vielmur-Sur-Agout':[626542.116,6280461.738],
+         'St Paul-Cap-de-Joux':[617341.329,6283743.400],
+         'Villeneuve-lès-lavaur':[602022.138,6278485.487],
+         'Lavaur':[604890.514,6289623.373],
+         'Saix':[634096.773,6276222.376],
+         'Dourgne':[630321.279,6265464.647],
+         'Sorèze':[624423.786,6261910.745],
+         'Lautrec':[630493.276,6289921.993],
+         'Graulhet':[618445.042,6296272.167],
+         'Blan':[619758.761,6270229.387]}
+
+routes = gpd.read_file('./DATA/ROUTES/route_CBPuylau.shp')
+batiments = gpd.read_file('./DATA/BATIMENTS/batiments_CBPuylaurens.shp')
 
 LegendMap = Image.open('./im/mapLegend.png')
 
 def surelevation(meteo):
-    global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent
+    global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent, increment
     debut_jour = st.sidebar.date_input("Choisir le jour de début des émissions :", pd.to_datetime('2021/03/06'), key='start')
     if (meteo.index[-1]-pd.to_datetime(st.session_state.start)).days < 30*6:
         increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=1, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
@@ -60,7 +85,99 @@ def surelevation(meteo):
     
     vVent = (meteo_slice.iloc[:, 3].resample('d').mean().to_numpy()[:, np.newaxis]/3.6)*vVent
 
+def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
+    C = np.zeros((n_slice, ny, nx))
+    for i in range(n_slice):
+        Δh = Δh_Briggs(dist_XY, Vs, v[i], d, Ts, Ta[i])
+        dot_product=X_*vVent[i, 0]+Y_*vVent[i, 1]
+        magnitudes=v[i]*dist_XY
+        # angle entre la direction du vent et le point (x,y)
+        subtended=np.arccos(dot_product/(magnitudes+1e-15));
+        # distance le long de la direction du vent jusqu'à une ligne perpendiculaire qui intersecte x,y
+        downwind=np.cos(subtended)*dist_XY
+        filtre = np.where(downwind > 0)
+        crosswind=np.sin(subtended)*dist_XY
+        SA_climatique = stability_pasquill(v[i], RSI[i], HR[i], mode='24H')
+        sr = sigma(SA_climatique, downwind)
+        σy =sr[1, 0, filtre[0],filtre[1]]
+        σz =sr[1, 1, filtre[0],filtre[1]]
+        C[i, filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v[i]*σy*σz)
+    return C
+
+def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, cc, titre, contour_aigue, contour_aigue_color, contour_chronique, contour_chronique_color, VTR, ERU=None, contour_ERU=[1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], contour_ERU_color=["indigo", "navy", 'teal', "lightgreen", 'orange', "fuchsia"]):
+    st.markdown(f"""
+                    
+            ## {titre}""", unsafe_allow_html=True)
+            
+
+    st.markdown("""<p>Pour les toxiques à seuil, il existe des valeurs toxicologiques de référence (VTR), en dessous desquelles l'exposition est réputée sans risque. Ces valeurs toxicologiques de référence, basées sur les connaissances scientifiques, sont fournies, pour chaque voie d'exposition, dans des bases de données réalisées par différents organismes internationaux. (extrait de l'étude du CAREPS) </p>
+                <p> Nous pouvons ajouter que les seuils dépendent de la durée d'exposition; il existe donc des seuils pour des expositions aigues (intense sur une courte période) et chronique (moins intense mais sur une période plus longue voir continue) </p>
+                """, unsafe_allow_html=True)
     
+    st.markdown(""" ### Exposition Aigue """, unsafe_allow_html=True)
+    
+    for vtr in VTR:
+        st.write(f'Source: {vtr[1]}')
+        st.table(vtr[0].iloc[vtr[2], :])
+        
+    fig, ax = plt.subplots(figsize=(10, 10))
+    #ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
+    im = ax.contourf(Cmax*cc*1E6, contour_aigue, extent=extent, colors=contour_aigue_color, origin='lower', zorder=1) 
+    batiments.plot(ax=ax, color='k')
+    routes.plot(ax=ax, color='gray')
+    ax.scatter(x0, y0, c='crimson', zorder=3)
+    divider = make_axes_locatable(ax)
+    ax.set_xlim(x0-xmax*1E3, x0+xmax*1E3)
+    ax.set_ylim(y0-xmax*1E3, y0+xmax*1E3)
+    cax = divider.append_axes("top", size="7%", pad="10%")
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+    cbar.set_label(r"Concentration moyenne journalière maximale dans l'air sur la période choisie ($µg.m^{-3}$)")
+    st.pyplot(fig)
+    
+    st.markdown(""" ### Exposition Chronique """, unsafe_allow_html=True)
+
+    for vtr in VTR:
+        st.write(f'Source: {vtr[1]}')
+        st.table(vtr[0].iloc[vtr[3], :])
+        
+    fig, ax = plt.subplots(figsize=(10, 10))
+    #ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
+    im = ax.contourf(Cmean*cc*1E6, contour_chronique, extent=extent, colors=contour_chronique_color, origin='lower', zorder=1) 
+    batiments.plot(ax=ax, color='k')
+    routes.plot(ax=ax, color='gray')
+    ax.scatter(x0, y0, c='crimson', zorder=3)
+    divider = make_axes_locatable(ax)
+    ax.set_xlim(x0-xmax*1E3, x0+xmax*1E3)
+    ax.set_ylim(y0-xmax*1E3, y0+xmax*1E3)
+    cax = divider.append_axes("top", size="7%", pad="10%")
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+    cbar.set_label(r"Concentration moyenne dans l'air sur la période choisie ($µg.m^{-3}$)")
+    st.pyplot(fig)
+    
+    if ERU is not None:
+        
+        st.markdown("""
+                    ### Exposition Chronique sans seuil 
+                    <p> Pour les toxiques sans seuil, les mêmes instances internationales ont défini pour certains composés chimiques la probabilité, pour un individu, de développer un cancer lié à une exposition égale, en moyenne sur sa durée de vie, à une unité de dose (1 μg.m-3 pour l’inhalation) de la substance toxique. Ces probabilités sont exprimées, pour la plupart des organismes, par un excès de risque unitaire (ERU). Un ERU à 10-5 signifie qu’une personne exposée en moyenne durant sa vie à une unité de dose, aurait une probabilité supplémentaire de 0,00001, par rapport au risque de base, de contracter un cancer lié à cette exposition. Le CIRC, l'EPA et l’Union Européenne ont par ailleurs classé la plupart des composés chimiques en fonction de leur cancérogénicité.(extrait de l'étude du CAREPS)</p>""", unsafe_allow_html=True)
+        for eru in ERU:
+            st.write(f'Source: {eru[1]}')
+            st.table(eru[0])
+            val = eru[0].iloc[:, 1].to_numpy()
+            fig, ax = plt.subplots(figsize=(10, 10))
+            #ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
+            fraction_de_vie = (increment/365)/85.3#durée de vie moyenne : 80ans
+            im = ax.contourf(np.nanmean(C*cc*1E6, axis=0)*fraction_de_vie*np.min(val), contour_ERU, extent=extent, colors=contour_ERU_color, origin='lower', zorder=1) 
+            batiments.plot(ax=ax, color='k')
+            routes.plot(ax=ax, color='gray')
+            ax.scatter(x0, y0, c='crimson', zorder=3)
+            divider = make_axes_locatable(ax)
+            ax.set_xlim(x0-xmax*1E3, x0+xmax*1E3)
+            ax.set_ylim(y0-xmax*1E3, y0+xmax*1E3)
+            cax = divider.append_axes("top", size="7%", pad="15%")
+            cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+            cbar.set_label(r"Probabilité accrue de développer un cancer sur la période choisie"+" \n échelle de couleur (de gauche à droite) : \n 1/1 milliard, 1/100 millions, ... 1/10 000, 1/1000")
+            st.pyplot(fig)
+        
 def Historique():
     RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
     WGS84_to_RGF93 = Transformer.from_crs('4326', '2154', always_xy=True)
@@ -79,23 +196,45 @@ def Historique():
     X, Y = np.meshgrid(vx, vy)
     X_, Y_, Z_ = X-x0, Y-y0, Z-z0
     dist_XY = np.sqrt(X_**2+Y_**2)
-    extent = [X[dist_XY < xmax*1E3].min(), X[dist_XY < xmax*1E3].max(), Y[dist_XY < xmax*1E3].min(), Y[dist_XY < xmax*1E3].max()]
-    Z[dist_XY < xmax*1E3] = np.nan
+    extent = [X.min(), X.max(), Y.min(), Y.max()]
     
     meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
     meteo.index = pd.to_datetime(meteo.iloc[:, :5])
     
     surelevation(meteo)
     
-    st.markdown("""
-                
-        ## Historique des données météorologiques : impact sur les émissions 
-        
-        <p> Pour les calculs suivant nous utilisons les modèles de Briggs et de Pasquill & Grifford (mode 2). Pour plus d'information se reporter au chapitre <a href='Comprendre_Le_Calcul_Et_Ses_Options' target='_self'>détaillant le calcul et ses options</a>
-        """, unsafe_allow_html=True)
-        
+    C = compute(ny, nx, len(v), dist_XY, X_, Y_, Z, z0)
+    Cmax = np.nanmax(C, axis=0)
+    Cmean = np.nanmean(C, axis=0)
+    ind_max = np.where(Cmean == np.nanmax(Cmean))
     
-        
+    st.markdown("""
+        <p> Pour les calculs suivant nous utilisons les modèles de Briggs et de Pasquill & Grifford (mode 2). Pour plus d'information se reporter au chapitre <a href='Comprendre_Le_Calcul_Et_Ses_Options' target='_self'>détaillant le calcul et ses options</a>. A noter que le calcul peut-etre long et que lorsqu'il s'execute à nouveau, les figures sont semi-transparentes.
+        """, unsafe_allow_html=True)
+    
+    
+    e = st.selectbox("Choisir un composé :",
+                     ["SOx", "NOx", "CO", "Formaldéhyde", "Benzene (71-43-2)", "Chrome (Cr)", "Acroléine", "Arsenic (As)", "Nickel (Ni)", "Acide acrylique",
+                       "Acétaldéhyde", "Cobalt (Co)", "Phénol", "Cadmium (Cd)",], index=0)
+    
+    c_mode = st.selectbox("Choisir une concentration à la source :",
+                          ["Mesure ATOSCA, pièce E6", "Moyenne des centrales, d'après l'étude du CAREPS", "Maximum des centrales, d'après l'étude du CAREPS", 'Seuil DREAL'], index=0)
+    
+    concentration = {"Mesure ATOSCA, pièce E6":emission_ATOSCA,
+                     "Moyenne des centrales, d'après l'étude du CAREPS":emission_CAREPS_moy,
+                     "Maximum des centrales, d'après l'étude du CAREPS":None,
+                     'Seuil DREAL':None}
+    #en g/s
+    plot_composés(Z, x0, y0, extent,
+                  C, Cmax, Cmean,
+                  (Vs*(d/2)**2*np.pi)*concentration[c_mode][e]/(13.9*(d/2)**2*np.pi),
+                  Composés[e]["titre"], Composés[e]["contour_aigue"], Composés[e]["contour_aigue color"],
+                  Composés[e]["contour_chronique"], Composés[e]["contour_chronique color"],
+                  Composés[e]["VTR"], ERU=Composés[e]["ERU"])
+
+
+
+
 def Tps_réel():
     Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
 
@@ -230,7 +369,7 @@ def Carte():
         
 def data_explore():
     global xmax
-    xmax = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=5.0, min_value=0.0, max_value=20.0, step=0.01)
+    xmax = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=1.5, min_value=0.5, max_value=15., step=0.1)
     TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
     if TimeVision == 'Historique':
         Historique()

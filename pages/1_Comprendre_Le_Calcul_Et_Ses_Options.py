@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+========
 
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 from streamlit_folium import st_folium
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image
 from pyproj import Transformer
 from shapely.geometry import Polygon, MultiPolygon
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+from streamlit.hello.utils import show_code
+
+========
 
 import branca.colormap as cmp
 
@@ -34,11 +41,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from datetime import datetime, timedelta
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 import branca.colormap as cmp
+import datetime
 import folium
-from streamlit_folium import st_folium
-from pyproj import Transformer
-
+import Functions.Calculs_tool as calculs
+import geopandas as gpd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
 import thermo
 
 
@@ -162,10 +175,10 @@ def surelevation():
     Qh = Hair*debit_masse_air  #débit de chaleur en kJ/s
 
     x = np.arange(0, xmax, 10)
-    briggs = Δh_Briggs(x, Vs, v, d, Ts, Ta)
-    Concawes = Δh_Concawes(v, d, Qh)
-    CarsonAndMoses = Δh_CarsonAndMoses(Vs, v, d, Qh)
-    Holland = Δh_Holland(Vs, v, d, Pa, Ts, Ta)
+    briggs = calculs.Δh_Briggs(x, Vs, v, d, Ts, Ta)
+    Concawes = calculs.Δh_Concawes(v, d, Qh)
+    CarsonAndMoses = calculs.Δh_CarsonAndMoses(Vs, v, d, Qh)
+    Holland = calculs.Δh_Holland(Vs, v, d, Pa, Ts, Ta)
 
     fig, ax = plt.subplots()
     ax.plot(x, briggs, label='Briggs')
@@ -177,11 +190,26 @@ def surelevation():
     ax.legend()
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+  
+========
 
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
     x = np.linspace(0, xmax, 1000)
     x = x[:, np.newaxis]
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+    A = calculs.sigma('A', x)
+    AB = calculs.sigma('A-B', x)
+    B = calculs.sigma('B', x)
+    BC = calculs.sigma('B-C', x)
+    C = calculs.sigma('C', x)
+    CD = calculs.sigma('C-D', x)
+    D = calculs.sigma('D', x)
+    E = calculs.sigma('E', x)
+    F = calculs.sigma('F', x)
+========
 
     A = sigma('A', x)
     #AB = sigma('A-B', x)
@@ -192,6 +220,7 @@ def plot_dispersion():
     D = sigma('D', x)
     E = sigma('E', x)
     F = sigma('F', x)
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
     PG1 = st.checkbox("Pasquill & Gifford, mode 1", False)
     PG2 = st.checkbox("Pasquill & Gifford, mode 2", True)
@@ -280,13 +309,13 @@ def coupe_vertical():
     elif MCD =="Klug 1969, mode 1":
         i=3
     Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
-    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
+    SA_climatique = calculs.stability_pasquill(v, RSI, HR, mode='24H')
     liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
     SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
-    surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
-    sigma_val = sigma(SA, X)
+    surelevation = calculs.Δh_Briggs(X, Vs, v, d, Ts, Ta)
+    sigma_val = calculs.sigma(SA, X)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zx-19-surelevation
@@ -302,8 +331,8 @@ def coupe_vertical():
     Y, Zy = np.meshgrid(y, z)
     ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
     Xy = np.asarray([[Xy]])
-    surelevation = Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
-    sigma_val = sigma(SA, Xy)
+    surelevation = calculs.Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
+    sigma_val = calculs.sigma(SA, Xy)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zy-19-surelevation
@@ -341,7 +370,11 @@ def collec_to_gdf(collec_poly):
             polygons.append(mpoly[0])
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+    
+========
 
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def carte_stationnaire():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -354,7 +387,7 @@ def carte_stationnaire():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx))
-    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -363,7 +396,7 @@ def carte_stationnaire():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = sigma(SA_climatique, downwind)
+    sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
@@ -417,6 +450,10 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
+<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
+    thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
+========
+>>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)
@@ -430,7 +467,7 @@ def carte_bouffee():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx, 24))
-    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -439,7 +476,7 @@ def carte_bouffee():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = sigma(SA_climatique, downwind)
+    sr = calculs.sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)

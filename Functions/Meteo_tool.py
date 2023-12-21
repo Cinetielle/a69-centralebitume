@@ -1,14 +1,16 @@
-# map_tools.py>
+#meteo_tools.py>
 # function
-import openmeteo_requests
-import requests_cache
-import pandas as pd
-from retry_requests import retry
 from bs4 import BeautifulSoup
-import requests
-import re
-from datetime import datetime
+from datetime import  datetime, timedelta
+from retry_requests import retry
+
+import openmeteo_requests
+import pandas as pd
 import pytz
+import re
+import requests
+import requests_cache
+import streamlit as st
 
 def MeteoDataLive():
 
@@ -73,7 +75,31 @@ def MeteoDataLive():
             break
         else : 
             SolarPower = 0
-    return Temperature,Humidite,IsDay,Precipitation,SolarPower,Pression,V_vents,Dir_vents,Raf_vents
+
+    if IsDay==1: JourStatus ='jour'
+    else: JourStatus ='nuit'
+
+    Temperature = round(Temperature*100)/100
+    Pression    = round(Pression*100)/100
+    V_vents     = round(V_vents*100)/100
+    Dir_vents   = round(Dir_vents*100)/100
+    Raf_vents   = round(Raf_vents*100)/100
+
+    MeteoData = pd.DataFrame(
+        [
+            {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
+            {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
+            {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
+            {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
+            {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
+            {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
+            {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
+            {"Donnée": "Exposition solaire",  "Valeur":SolarPower,         "Unité":'W/m²'},
+            {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
+        ]
+        )
+
+    return MeteoData
 
 def MeteoDataFuture(ChosenDate):
 
@@ -153,3 +179,35 @@ def MeteoDataFuture(ChosenDate):
                 DataMeteo.Expo_Solaire[i] = 0
     return DataMeteo
 
+def MeteoByTimeChoice():
+    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
+    if TimeVision == 'Historique':
+        print('in development')
+        #meteo = pd.read_csv('./DATA/METEO/meteo_puylaurens.csv', sep=';', skiprows=3)
+        #date_tmp = pd.to_datetime(meteo.iloc[:, 0], format="%d/%m/%y")
+        #start_date = st.sidebar.date_input('Début de période', date_tmp[0]+datetime.timedelta(days=5))
+        #end_date = st.sidebar.date_input('Fin de période', date_tmp[len(date)-1])
+        MeteoData =0
+
+    elif TimeVision == 'Temps réel':
+        MeteoData = MeteoDataLive()
+        st.sidebar.write(MeteoData.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+    elif TimeVision == 'Prévisions':
+
+        tz = pytz.timezone('Europe/Paris')
+        now = datetime.now(tz)
+        month = now.month
+        if month < 10:
+            month = '0'+str(month)
+        day = now.day
+        if day < 10:
+            day = '0'+str(day)    
+        today = str(now.year)+'-'+str(month)+'-'+str(day)
+        today = datetime.strptime(today, '%Y-%m-%d').date()
+        DayMenu = [today + timedelta(days = i) for i in range(8)]
+        ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
+ 
+        MeteoData = MeteoDataFuture(str(ChosenDay))
+    
+    return MeteoData

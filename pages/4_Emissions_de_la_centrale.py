@@ -13,13 +13,14 @@
 # limitations under the License.
 
 from typing import Any
-import streamlit as st
-import pandas as pd
 from streamlit.hello.utils import show_code
+
+import pandas as pd
+import streamlit as st
 
 st.set_page_config(layout="wide",page_title="Emissions", page_icon="")
 
-def data_explore() -> None:
+def main() -> None:
 
 
     TableParticule = pd.DataFrame(
@@ -52,4 +53,5 @@ st.markdown(
     
     """
 )
-data_explore()
+
+main()

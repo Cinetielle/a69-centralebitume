@@ -389,7 +389,7 @@ def carte_stationnaire():
     CO2_increase = max_molCO2/VM[3]
     st.markdown("Le facteur de dilution maximum au sol avec les limites considérées est de :", unsafe_allow_html=True)
     st.markdown(f'<p style="color:Black; font-size: 40px;"> {np.nanmax(C):.2e}</p>', unsafe_allow_html=True)
-    st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième):", unsafe_allow_html=True)
+    st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième)", unsafe_allow_html=True)
     st.markdown(r"Cela équivaut (pour un rejet moyen de 5 $t.h^{-1}$), dans les limites du modèle, à une augmentation moyenne (maximum) du CO2 dans l'air de ($mol.m^3$) :", unsafe_allow_html=True)
     st.markdown(f"<p><span style='font-size: 40px;'> {max_molCO2:.2e} (<span style='color:Red; font-size: 40px;'>&#8679; {CO2_increase:.2%}</span>)</span></p> ", unsafe_allow_html=True)
 

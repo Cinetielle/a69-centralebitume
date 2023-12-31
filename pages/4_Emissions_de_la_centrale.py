@@ -23,7 +23,50 @@ data_CAREPS = pd.read_csv('./DATA/DATA_CAREPS.csv', sep=';')
 
 st.set_page_config(layout="wide",page_title="Emissions", page_icon="")
 
-def main() -> None:
+def CAREPS():
+    st.markdown("""## Les données du CAREPS
+                
+                Les données de l'étude du CAREPS ont été numérisées. Nous présentons ici des histogrammes de distribution des principales qualités des émissions.""", unsafe_allow_html=True)
+    
+
+    humidité = data_CAREPS['Humidité (%)'].to_numpy()
+    fig, ax =  plt.subplots(1, 2, figsize=(5, 2))
+    ax[0].hist(humidité, color="k", bins=30)
+    ax[0].set_title("Humidité (%)")
+    ax[1].boxplot(humidité[~np.isnan(humidité)])
+    st.pyplot(fig)
+
+    O2 = data_CAREPS['O2 (%)'].to_numpy()
+    fig, ax =  plt.subplots(1, 2, figsize=(5, 2))
+    ax[0].hist(O2, color="k", bins=30)
+    ax[0].set_title("O2 (%)")
+    ax[1].boxplot(O2[~np.isnan(O2)])
+    st.pyplot(fig)
+
+    T = data_CAREPS['T° moyenne (°C)'].to_numpy()
+    fig, ax =  plt.subplots(1, 2, figsize=(5, 2))
+    ax[0].hist(T, color="k", bins=30)
+    ax[0].set_title("Température moyenne (°C)")
+    ax[1].boxplot(T[~np.isnan(T)])
+    st.pyplot(fig)
+
+    v = data_CAREPS['v éjection gaz (m/s)'].to_numpy()
+    fig, ax =  plt.subplots(1, 2, figsize=(5, 2))
+    ax[0].hist(v, color="k", bins=30)
+    ax[0].set_title("Vitesse d'émission (m/s)")
+    ax[1].boxplot(v[~np.isnan(v)])
+    st.pyplot(fig)
+
+    fig, ax =  plt.subplots(figsize=(5, 2))
+    f=ax.scatter(v, T, c=O2, s=humidité, cmap='jet')
+    plt.colorbar(f, ax=ax).set_label('O2 (%)')
+    ax.set_xlabel("Vitesse d'émission (m/s)")
+    ax.set_ylabel('Température (°C)')
+    st.pyplot(fig)
+
+    st.write(data_CAREPS.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+def main():
 
 
     TableParticule = pd.DataFrame(
@@ -52,9 +95,9 @@ def main() -> None:
 st.markdown("# Particules émises par la centrale à bitume")
 st.markdown(
     """
-    Cette page permet présentes les particules émises par la centrale à bitume de Puylaurens.
+    Cette page présente les particules émises par les centrales à bitume.
     
     """
 )
 
-main()
+CAREPS()

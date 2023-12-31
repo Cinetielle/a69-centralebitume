@@ -160,10 +160,10 @@ def surelevation():
     Qh = Hair*debit_masse_air  #débit de chaleur en kJ/s
 
     x = np.arange(0, xmax, 10)
-    briggs = calculs.Δh_Briggs(x, Vs, v, d, Ts, Ta)
-    Concawes = calculs.Δh_Concawes(v, d, Qh)
-    CarsonAndMoses = calculs.Δh_CarsonAndMoses(Vs, v, d, Qh)
-    Holland = calculs.Δh_Holland(Vs, v, d, Pa, Ts, Ta)
+    briggs = Δh_Briggs(x, Vs, v, d, Ts, Ta)
+    Concawes = Δh_Concawes(v, d, Qh)
+    CarsonAndMoses = Δh_CarsonAndMoses(Vs, v, d, Qh)
+    Holland = Δh_Holland(Vs, v, d, Pa, Ts, Ta)
 
     fig, ax = plt.subplots()
     ax.plot(x, briggs, label='Briggs')
@@ -278,13 +278,13 @@ def coupe_vertical():
     elif MCD =="Klug 1969, mode 1":
         i=3
     Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
-    SA_climatique = calculs.stability_pasquill(v, RSI, HR, mode='24H')
+    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
     liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
     SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
-    surelevation = calculs.Δh_Briggs(X, Vs, v, d, Ts, Ta)
-    sigma_val = calculs.sigma(SA, X)
+    surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
+    sigma_val = sigma(SA, X)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zx-19-surelevation
@@ -300,8 +300,8 @@ def coupe_vertical():
     Y, Zy = np.meshgrid(y, z)
     ax.plot([Xy, Xy], [Zy.min(), Zy.max()], c='w')
     Xy = np.asarray([[Xy]])
-    surelevation = calculs.Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
-    sigma_val = calculs.sigma(SA, Xy)
+    surelevation = Δh_Briggs(Xy, Vs, v, d, Ts, Ta)
+    sigma_val = sigma(SA, Xy)
     sigmay = sigma_val[i, 0, 0, :][np.newaxis, :]
     sigmaz = sigma_val[i, 1, 0, :][np.newaxis, :]
     newZ = Zy-19-surelevation
@@ -352,7 +352,7 @@ def carte_stationnaire():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx))
-    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -361,7 +361,7 @@ def carte_stationnaire():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = calculs.sigma(SA_climatique, downwind)
+    sr = sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
@@ -428,7 +428,7 @@ def carte_bouffee():
     #st.pyplot(fig)
 
     C = np.zeros((ny, nx, 24))
-    Δh = calculs.Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
+    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
     dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
     magnitudes=v*dist_XY
     # angle entre la direction du vent et le point (x,y)
@@ -437,7 +437,7 @@ def carte_bouffee():
     downwind=np.cos(subtended)*dist_XY
     filtre = np.where(downwind > 0)
     crosswind=np.sin(subtended)*dist_XY
-    sr = calculs.sigma(SA_climatique, downwind)
+    sr = sigma(SA_climatique, downwind)
     σy =sr[1, 0, filtre[0],filtre[1]]
     σz =sr[1, 1, filtre[0],filtre[1]]
     C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)

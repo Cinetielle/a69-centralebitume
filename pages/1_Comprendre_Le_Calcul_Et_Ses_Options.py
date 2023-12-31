@@ -12,19 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
-========
 
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 from streamlit_folium import st_folium
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image
 from pyproj import Transformer
 from shapely.geometry import Polygon, MultiPolygon
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
 from streamlit.hello.utils import show_code
-
-========
 
 import branca.colormap as cmp
 
@@ -36,22 +30,13 @@ from utils import show_code, Δh_Briggs, Δh_Concawes, Δh_CarsonAndMoses, Δh_H
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from PIL import Image
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from datetime import datetime, timedelta
 import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
-import branca.colormap as cmp
-import datetime
+
 import folium
-import Functions.Calculs_tool as calculs
-import geopandas as gpd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import streamlit as st
+
 import thermo
 
 
@@ -190,26 +175,11 @@ def surelevation():
     ax.legend()
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
-  
-========
 
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
     x = np.linspace(0, xmax, 1000)
     x = x[:, np.newaxis]
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
-    A = calculs.sigma('A', x)
-    AB = calculs.sigma('A-B', x)
-    B = calculs.sigma('B', x)
-    BC = calculs.sigma('B-C', x)
-    C = calculs.sigma('C', x)
-    CD = calculs.sigma('C-D', x)
-    D = calculs.sigma('D', x)
-    E = calculs.sigma('E', x)
-    F = calculs.sigma('F', x)
-========
 
     A = sigma('A', x)
     #AB = sigma('A-B', x)
@@ -220,7 +190,6 @@ def plot_dispersion():
     D = sigma('D', x)
     E = sigma('E', x)
     F = sigma('F', x)
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
     PG1 = st.checkbox("Pasquill & Gifford, mode 1", False)
     PG2 = st.checkbox("Pasquill & Gifford, mode 2", True)
@@ -370,11 +339,7 @@ def collec_to_gdf(collec_poly):
             polygons.append(mpoly[0])
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
-    
-========
 
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 def carte_stationnaire():
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
@@ -450,10 +415,6 @@ def carte_stationnaire():
                       line_color='back').add_to(m)
     st_map = st_folium(m, use_container_width=True)
     
-<<<<<<<< HEAD:pages/4_Comprendre le calcul et ses options.py
-    thermo.chemical.Mixture(['N2', 'O2', 'Ar', 'CO2'], zs=[0.78084, 0.20946, 0.00934, 0.000412], T=273.15+Ta, P=Pa*1E2)
-========
->>>>>>>> origin/MB_dev_branche:pages/1_Comprendre_Le_Calcul_Et_Ses_Options.py
 
 def carte_bouffee():
     vVent_mean = np.nanmean(vVent, axis=0)

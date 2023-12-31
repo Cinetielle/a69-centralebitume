@@ -14,9 +14,12 @@
 
 from typing import Any
 from streamlit.hello.utils import show_code
-
 import pandas as pd
+import numpy as np
 import streamlit as st
+import matplotlib.pyplot as plt
+
+data_CAREPS = pd.read_csv('./DATA/DATA_CAREPS.csv', sep=';')
 
 st.set_page_config(layout="wide",page_title="Emissions", page_icon="")
 

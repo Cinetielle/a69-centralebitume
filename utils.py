@@ -239,7 +239,7 @@ def  stability_pasquill(v, RSI, HR, mode='24H'):
     else:
         print('Pasquill Stability error')
         return 'D'
-    
+
 def sigma(stability, x):
     """
     application restricted to downwind distance < 10km
@@ -331,3 +331,139 @@ def sigma(stability, x):
                         [0.32*x**0.78, 0.22*x**0.78],
                         [0.219*x**0.764, 0.140*x**0.727]])
         return D
+    
+class normalize(object):
+    """
+    O2_ref : float, optional
+        O2 fraction for reference
+    P0 : float, optional
+        °K, température de référence
+    P0 : float, optional
+        Pa, pression de référence
+    """
+    def __init__(self, O2_ref=17, T0=273, P0=101.3*1E3):
+        self.O2ref = O2_ref
+        self.T0 = T0
+        self.P0 = P0
+    
+    def get_P_with_Qnorm(self, Q_norm, v_out, T, O2, H, S=np.pi*(1.35/2)**2):
+        self.P = Q_norm/((v_out*S*3600)/(T/self.T0))*self.P0
+
+    def get_Q_norm(self, v_out, T, O2sec, H, P, S=np.pi*(1.35/2)**2):
+        """
+        Parameters
+        ----------
+        v_out : float
+            m/s, vitesse d'éjection des gaz de la cheminée'
+        T : float
+            °C, température du gaz en sortie de cheminée
+        O2sec : float
+            % O2 ; O2sec = O2hum/(100-H)
+        H : float
+            % humidité relative
+        P : float
+            Pa, pression de l'air en sortie de cheminée
+        S : float, optional
+            m2, surface (intérieure) du conduit de cheminée au niveau du rejet
+        """
+        T=T+self.T0
+        hum = (100-H)/100
+        if P is None:
+            try:
+                P =self.P
+            except:
+                print("La pression n'est pas définie")
+                
+        Q = v_out*S*3600
+        
+        Qhum =(Q*P*self.T0)/(self.P0*T)
+        Qsec = Qhum*hum
+        O2_corr = (21-O2sec)/(21-self.O2ref)
+        Qhum_O2ref = Qhum*O2_corr
+        self.Q0 = Qhum_O2ref
+        return {'Q, m3/h':Q, 'Qhum, (Nm3/h)h':Qhum, 'Qsec, (Nm3/h)s':Qsec, f'Qhum_{int(self.O2ref*100)}%O2, (Nm3/h)h_O2':Qhum_O2ref}
+    
+    def get_DébitMassique(self, concentration_0, mode='h_02'):
+        """
+
+        Parameters
+        ----------
+        concentration_0 : float
+            (g/Nm3)h_17%O2
+
+        Returns
+        -------
+        float
+            g/s, le débit massique horaire
+
+        """
+        try:
+            self.DM = concentration_0*self.Q0/3600
+            return self.DM
+        except:
+            print("Il faut définir le débit normalisé (self.get_Q_norm())")
+            
+if __name__ == '__main__':
+    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
+    Q=71100 #(m3/h)h
+    Qh = 53700 #(Nm3/h)h
+    Qsec=46300 #(Nm3/h)s
+    O2 = 0.1494 # fraction d'O2
+    T= 83.4 #°C
+    v= 13.8 #m/s
+    H= 13.7 #%humidité relative
+    d=1.35
+    S=np.pi*(d/2)**2 #m2
+    P=99.8*1E3#-0.05*1E3 #Pa
+    MVsec = 1.09 #(kg/Nm3)s
+    MVhum = 0.93 #(kg/Nm3)h
+    Cpoussière_h = 4.5 #(mg/Nm3)h
+    Cpoussière_s = 5.2 #(mg/Nm3)s
+    Cpoussière_h_02 = 2.2 #(mg/Nm3)h_O2
+    FluxHoraire_poussière = 0.24 #kg/h 0.06666 g/s
+    
+    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)
+    poussière = centrale.get_DébitMassique(Cpoussière_h_02*1E-3)
+    53664.24864014637*Cpoussière_h*1E-3
+    46312.24657644631*Cpoussière_s*1E-3
+    82009.9799731468*Cpoussière_h_02*1E-3
+
+
+
+    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
+    
+    Qh = 53400 #(Nm3/h)h
+    Qsec= 46500#(Nm3/h)s
+    O2 = 13/(1-0.129) # fraction d'O2
+    T= 131 #°C
+    v= 21.8 #m/s
+    H= 12.9 #%humidité relative
+    d=1.15
+    S=np.pi*(d/2)**2 #m2
+    Q= v*S*3600 #(m3/h)h
+    P=98.3*1E3#-24.2 #Pa
+
+
+    Cpoussière_s = 11.8 #(mg/Nm3)s
+    C_CO_h_02 = 98.1 #(mg/Nm3)h_O2
+    FluxHoraire_poussière = 0.546 #kg/h
+    FluxHoraire_CO = 7.95 #kg/h
+    
+    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)
+    CO = centrale.get_DébitMassique(C_CO_h_02*1E-3)
+
+    46557.329967947306*Cpoussière_s*1E-3
+    81176.3511530517*C_CO_h_02*1E-3
+    
+    
+    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
+    
+    H= 5 #%humidité relative
+    O2 = 10/(1-H/100) # fraction d'O2
+    T= 60 #°C
+    v= 23.4 #m/s
+    d=1.35
+    S=np.pi*(d/2)**2 #m2
+    Q= v*S*3600 #(m3/h)h
+    P=100.4*1E3#-24.2 #Pa
+    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)

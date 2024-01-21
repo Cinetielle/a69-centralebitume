@@ -32,6 +32,7 @@ import geopandas as gpd
 
 from DATA.EMISSIONS_CENTRALES import emission_ATOSCA, emission_CAREPS_moy #en g/m3
 from DATA.VTR_ERU import Composés
+from utils import normalize
 
 villes = {'Revel': [619399.490,6262672.707],
          'Puylaurens':[620266.862,6275241.681],
@@ -273,10 +274,13 @@ def Historique():
                      "Moyenne des centrales, d'après l'étude du CAREPS":emission_CAREPS_moy,
                      "Maximum des centrales, d'après l'étude du CAREPS":None,
                      'Seuil DREAL':None}
+    #actualise la concentration en fonction du débit de la cheminée
+    cc0 = concentration[c_mode][e] #en  g/s
+    cc = (Vs*(d/2)**2*np.pi*cc0)/(13.9*(d/2)**2*np.pi)
     #en g/s
     plot_composés(Z, x0, y0, extent,
                   C, Cmax, Cmean,
-                  (Vs*(d/2)**2*np.pi)*concentration[c_mode][e]/(13.9*(d/2)**2*np.pi), #actualise la concentration en fonction du débit de la cheminée
+                  cc,
                   Composés[e]["titre"], Composés[e]["contour_aigue"], Composés[e]["contour_aigue color"],
                   Composés[e]["contour_chronique"], Composés[e]["contour_chronique color"],
                   Composés[e]["VTR"], ERU=Composés[e]["ERU"], background=Composés[e]["Background"])

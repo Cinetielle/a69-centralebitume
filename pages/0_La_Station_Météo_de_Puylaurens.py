@@ -13,16 +13,11 @@
 # limitations under the License.
 
 from typing import Any
-<<<<<<<< HEAD:pages/5_Station méteo Puylaurens.py
-from streamlit.hello.utils import show_code
-========
-
 import numpy as np
 
 import streamlit as st
 from utils import show_code
 import pandas as pd
->>>>>>>> origin/MB_dev_branche:pages/0_La_Station_Météo_de_Puylaurens.py
 
 import datetime
 import matplotlib.pyplot as plt

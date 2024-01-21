@@ -104,7 +104,7 @@ def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
         C[i, filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v[i]*σy*σz)
     return C
 
-def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, cc, titre, contour_aigue, contour_aigue_color, contour_chronique, contour_chronique_color, VTR, ERU=None, contour_ERU=[1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], contour_ERU_color=["indigo", "navy", 'teal', "lightgreen", 'orange', "fuchsia"]):
+def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, cc, titre, contour_aigue, contour_aigue_color, contour_chronique, contour_chronique_color, VTR, ERU=None, contour_ERU=[1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], contour_ERU_color=["indigo", "navy", 'teal', "lightgreen", 'orange', "fuchsia"], background=None):
     st.markdown(f"""
                     
             ## {titre}""", unsafe_allow_html=True)
@@ -112,13 +112,38 @@ def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, cc, titre, contour_aigue, 
 
     st.markdown("""<p>Pour les toxiques à seuil, il existe des valeurs toxicologiques de référence (VTR), en dessous desquelles l'exposition est réputée sans risque. Ces valeurs toxicologiques de référence, basées sur les connaissances scientifiques, sont fournies, pour chaque voie d'exposition, dans des bases de données réalisées par différents organismes internationaux. (extrait de l'étude du CAREPS) </p>
                 <p> Nous pouvons ajouter que les seuils dépendent de la durée d'exposition; il existe donc des seuils pour des expositions aigues (intense sur une courte période) et chronique (moins intense mais sur une période plus longue voir continue) </p>
+                <p> La méthode utilisée ne permet qu'une description journalière. Pour une analyse plus fine des expositions aigu, un autre type de modélisation doit etre envisagé (dans un périmètre proche de la centrale notamment).</p>
+                <p style="color:red">On peut considérer qu'il existe un risque sanitaire si l'indice de risque individuel dépasse 1.</p>
                 """, unsafe_allow_html=True)
     
-    st.markdown(""" ### Exposition Aigue """, unsafe_allow_html=True)
+    st.markdown(""" ### Exposition Aigu""", unsafe_allow_html=True)
+    st.markdown(""" La concentration moyenne journalière maximum est de :  """, unsafe_allow_html=True)
+    st.markdown(f'<p style="color:blue; font-size: 30px;"> {np.nanmax(Cmax)*cc*1E6} µg.m<sup style="color:blue; font-size: 30px;">-3</sup> </p>', unsafe_allow_html=True)
     
+    if background is None:
+        st.markdown("""La concentration moyenne du fond de l'air est inconnue.""", unsafe_allow_html=True)
+        fond_air = np.nan
+    else:
+        st.markdown("""La concentration du fond de l'air est de :""", unsafe_allow_html=True)
+        st.table(background)
+        fond_air = background.iloc[:, 1].mean()
+    
+    st.markdown("""Les seuils sanitaires pour une exposition aigu sont les suivants :""", unsafe_allow_html=True)
+    maxmin=1E6
     for vtr in VTR:
-        st.write(f'Source: {vtr[1]}')
-        st.table(vtr[0].iloc[vtr[2], :])
+        if len(vtr[0].iloc[vtr[2], :]) > 0:
+            st.write(f'Source: {vtr[1]}')
+            st.table(vtr[0].iloc[vtr[2], :])
+            if len(vtr[0].iloc[vtr[2], 1]) > 0:
+                maxmin = np.nanmin([np.nanmin(vtr[0].iloc[vtr[2], 1]), maxmin])
+            
+    if (maxmin != 1E6):
+        st.markdown("""L'indice de risque individuel (Concentration/VTR) maximum lié à la seule centrale est de:""", unsafe_allow_html=True)
+        st.markdown(f'<p style="color:blue; font-size: 30px;"> {np.nanmax(Cmax)*cc*1E6/maxmin} </p>', unsafe_allow_html=True)
+        
+        if ~np.isnan(fond_air):
+            st.markdown("""L'indice de risque individuel (Concentration/VTR) maximum total est de:""", unsafe_allow_html=True)
+            st.markdown(f'<p style="color:blue; font-size: 30px;"> {(np.nanmax(Cmax)*cc*1E6+fond_air)/maxmin} </p>', unsafe_allow_html=True)
         
     fig, ax = plt.subplots(figsize=(10, 10))
     #ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
@@ -131,14 +156,38 @@ def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, cc, titre, contour_aigue, 
     ax.set_ylim(y0-xmax*1E3, y0+xmax*1E3)
     cax = divider.append_axes("top", size="7%", pad="10%")
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
-    cbar.set_label(r"Concentration moyenne journalière maximale dans l'air sur la période choisie ($µg.m^{-3}$)")
+    cbar.set_label(r"Concentration moyenne journalière maximale dans l'air sur la période choisie ")
     st.pyplot(fig)
     
     st.markdown(""" ### Exposition Chronique """, unsafe_allow_html=True)
 
+    st.markdown(""" La concentration moyenne maximum sur la période sélectionnée est de :  """, unsafe_allow_html=True)
+    st.markdown(f'<p style="color:blue; font-size: 30px;"> {np.nanmax(Cmean)*cc*1E6}  µg.m<sup style="color:blue; font-size: 30px;">-3</sup></p>', unsafe_allow_html=True)
+    
+    if background is None:
+        st.markdown("""La concentration moyenne du fond de l'air est inconnue.""", unsafe_allow_html=True)
+        fond_air = np.nan
+    else:
+        st.markdown("""La concentration du fond de l'air est de :""", unsafe_allow_html=True)
+        st.table(background)
+        fond_air = background.iloc[:, 1].mean()
+    
+    st.markdown("""Les seuils sanitaires pour une exposition chronique sont les suivants :""", unsafe_allow_html=True)
+    maxmin=1E6
     for vtr in VTR:
-        st.write(f'Source: {vtr[1]}')
-        st.table(vtr[0].iloc[vtr[3], :])
+        if len(vtr[0].iloc[vtr[3], :]) > 0:
+            st.write(f'Source: {vtr[1]}')
+            st.table(vtr[0].iloc[vtr[3], :])
+            if len(vtr[0].iloc[vtr[3], 1]) > 0:
+                maxmin = np.nanmin([np.nanmin(vtr[0].iloc[vtr[3], 1]), maxmin])
+            
+    if (maxmin != 1E6):
+        st.markdown("""L'indice de risque individuel (Concentration/VTR) maximum lié à la seule centrale est de:""", unsafe_allow_html=True)
+        st.markdown(f'<p style="color:blue; font-size: 30px;"> {np.nanmax(Cmean)*cc*1E6/maxmin} </p>', unsafe_allow_html=True)
+        
+        if ~np.isnan(fond_air):
+            st.markdown("""L'indice de risque individuel (Concentration/VTR) maximum total est de:""", unsafe_allow_html=True)
+            st.markdown(f'<p style="color:blue; font-size: 30px;"> {(np.nanmax(Cmean)*cc*1E6+fond_air)/maxmin} </p>', unsafe_allow_html=True)
         
     fig, ax = plt.subplots(figsize=(10, 10))
     #ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
@@ -227,10 +276,10 @@ def Historique():
     #en g/s
     plot_composés(Z, x0, y0, extent,
                   C, Cmax, Cmean,
-                  (Vs*(d/2)**2*np.pi)*concentration[c_mode][e]/(13.9*(d/2)**2*np.pi),
+                  (Vs*(d/2)**2*np.pi)*concentration[c_mode][e]/(13.9*(d/2)**2*np.pi), #actualise la concentration en fonction du débit de la cheminée
                   Composés[e]["titre"], Composés[e]["contour_aigue"], Composés[e]["contour_aigue color"],
                   Composés[e]["contour_chronique"], Composés[e]["contour_chronique color"],
-                  Composés[e]["VTR"], ERU=Composés[e]["ERU"])
+                  Composés[e]["VTR"], ERU=Composés[e]["ERU"], background=Composés[e]["Background"])
 
 
 
@@ -382,12 +431,15 @@ def data_explore():
 
 
 st.set_page_config(page_title="Autour de la centrale", page_icon="")
-st.markdown("# Impacts de la centrale à bitume pour un rayon précis")
+st.markdown("# Impacts de la centrale à bitume")
 st.sidebar.header("Paramètres")
 st.markdown(
     """
     Cette page permet de visualiser les impacts de la centrale à bitume de Puylaurens.
     
-    """
+    Les impacts dans les conditions météorologiques suivantes sont mal évalué par cette méthode de calcul :  inversion atmosphérique, brume, turbulence.
+    
+     <p>Les calculs réalisés ici sont des prévisions.</p> <p style="color:red">La réalité peut diverger de ces calculs.</p> <p>Des mesures in-situ sont donc indispensables</p> <p>Ces prévisions permettent notamment d'optimiser les dispositifs de mesure.</p>
+    """, unsafe_allow_html=True
 )
 data_explore()

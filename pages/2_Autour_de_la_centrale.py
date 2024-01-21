@@ -439,7 +439,7 @@ st.markdown(
     
     Les impacts dans les conditions météorologiques suivantes sont mal évalué par cette méthode de calcul :  inversion atmosphérique, brume, turbulence.
     
-     <p>Les calculs réalisés ici sont des prévisions.</p> <p style="color:red">La réalité peut diverger de ces calculs.</p> <p>Des mesures in-situ sont donc indispensables</p> <p>Ces prévisions permettent notamment d'optimiser les dispositifs de mesure.</p>
+     <p>Les calculs réalisés ici sont des prévisions.</p> <p style="color:red">La réalité peut diverger de ces calculs.</p> <p>Des mesures in-situ sont donc indispensables.</p> <p>Ces prévisions permettent notamment d'optimiser les dispositifs de mesure.</p>
     """, unsafe_allow_html=True
 )
 data_explore()

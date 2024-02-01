@@ -45,7 +45,7 @@ def CAREPS():
     
         T = data_CAREPS['T° moyenne (°C)'].to_numpy()
         fig, ax =  plt.subplots(1, 2, figsize=(10, 4))
-        ax[0].hist(T, color="k", bins=30)
+        ax[0].hist(T, color="k", bins=20)
         ax[0].set_title("Température moyenne (°C)")
         ax[1].boxplot(T[~np.isnan(T)])
         st.pyplot(fig)
@@ -111,7 +111,7 @@ def Normalisation():
                 Les concentrations réglementaires sont données pour des valeurs de débits normalisés. Nous allons détailler ici le calcul de normalisation.""", unsafe_allow_html=True)
     run = st.checkbox("Voir les calculs de normalisation")
     if run :
-        st.markdown("""La première étape""", unsafe_allow_html=True)
+        st.markdown("""en cours de construction""", unsafe_allow_html=True)
     
 def main():
 

@@ -349,7 +349,7 @@ class normalize(object):
     def get_P_with_Qnorm(self, Q_norm, v_out, T, O2, H, S=np.pi*(1.35/2)**2):
         self.P = Q_norm/((v_out*S*3600)/(T/self.T0))*self.P0
 
-    def get_Q_norm(self, v_out, T, O2sec, H, P, S=np.pi*(1.35/2)**2):
+    def get_Q_norm(self, v_out, T, O2sec, H, P, S=np.pi*(1.35/2)**2, output=True):
         """
         Parameters
         ----------
@@ -381,7 +381,8 @@ class normalize(object):
         O2_corr = (21-O2sec)/(21-self.O2ref)
         Qhum_O2ref = Qhum*O2_corr
         self.Q0 = Qhum_O2ref
-        return {'Q, m3/h':Q, 'Qhum, (Nm3/h)h':Qhum, 'Qsec, (Nm3/h)s':Qsec, f'Qhum_{int(self.O2ref*100)}%O2, (Nm3/h)h_O2':Qhum_O2ref}
+        if output:
+            return {'Q, m3/h':Q, 'Qhum, (Nm3/h)h':Qhum, 'Qsec, (Nm3/h)s':Qsec, f'Qhum_{int(self.O2ref*100)}%O2, (Nm3/h)h_O2':Qhum_O2ref}
     
     def get_DébitMassique(self, concentration_0, mode='h_02'):
         """

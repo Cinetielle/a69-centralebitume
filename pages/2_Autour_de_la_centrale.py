@@ -51,27 +51,35 @@ villes = {'Revel': [619399.490,6262672.707],
          'Graulhet':[618445.042,6296272.167],
          'Blan':[619758.761,6270229.387]}
 
-routes = gpd.read_file('./DATA/ROUTES/route_CBPuylau.shp')
-batiments = gpd.read_file('./DATA/BATIMENTS/batiments_CBPuylaurens.shp')
+@st.cache_data
+def load_data():
+    x0, y0, z0 = 623208.070, 6273468.332, 230-5+19
+    routes = gpd.read_file('./DATA/ROUTES/route_CBPuylau.shp')
+    batiments = gpd.read_file('./DATA/BATIMENTS/batiments_CBPuylaurens.shp')
+    
+    alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
+    filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
+    alt = alt.loc[filtre, :]
+    vx, vy = np.unique(alt.loc[:, 0]), np.unique(alt.loc[:, 1])
+    nx, ny = len(vx), len(vy)
+    Z = np.zeros((ny, nx))
+    idY, idX = (alt.loc[:, 1]-vy.min())/75, (alt.loc[:, 0]-vx.min())/75
+    Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
+    X, Y = np.meshgrid(vx, vy)
+    X_, Y_, Z_ = X-x0, Y-y0, Z-z0
+    dist_XY = np.sqrt(X_**2+Y_**2)
+    extent = [X.min(), X.max(), Y.min(), Y.max()]
+    
+    meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
+    meteo.index = pd.to_datetime(meteo.iloc[:, :5])
+    return routes, batiments, Z, extent, X, Y, X_, Y_, dist_XY, meteo, vx, vy, nx, ny
 
 LegendMap = Image.open('./im/mapLegend.png')
 
-def surelevation(meteo):
-    global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent, increment
-    debut_jour = st.sidebar.date_input("Choisir le jour de début des émissions :", pd.to_datetime('2021/03/06'), key='start')
-    if (meteo.index[-1]-pd.to_datetime(st.session_state.start)).days < 30*6:
-        increment = st.sidebar.slider("Choisir la durée des émissions (en jours):", value=1, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
-    else:
-        increment = st.sidebar.slider("Choisir la durée d'exposition (en jours):", value=30*6, min_value=0, max_value=(meteo.index[-1]-pd.to_datetime(st.session_state.start)).days, step=1)
-
-    fin_jour = pd.to_datetime(st.session_state.start)+timedelta(days=increment)
-
+def meteo_slice(fin_jour, debut_jour):
     filtre = (meteo.index >= pd.to_datetime('2021/03/06')) & (meteo.index <= pd.to_datetime('2021/03/06')+timedelta(days=30*6))
-    filtre = (meteo.index >= pd.to_datetime(st.session_state.start)) & (meteo.index <= fin_jour)
+    filtre = (meteo.index >= pd.to_datetime(debut_jour)) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
-    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
-    d = 1.35
-    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=45, max_value=155, step=5)
 
     v = meteo_slice.iloc[:, 3].resample('d').mean()/3.6 # vitesse du vent en m/s
     Pa = meteo_slice.iloc[:, 6].resample('d').mean()*1E2  # pression atmosphérique en Pa
@@ -86,6 +94,19 @@ def surelevation(meteo):
     vVent = np.asarray([meteo_slice['vdir_sin'].resample('d').mean().to_numpy(), meteo_slice['vdir_cos'].resample('d').mean().to_numpy()]).T*-1
     
     vVent = (meteo_slice.iloc[:, 3].resample('d').mean().to_numpy()[:, np.newaxis]/3.6)*vVent
+    return v, Ta, Pa, RSI, HR, vVent 
+
+def surelevation(meteo):
+    global Vs, v, d, Ts, Ta, Pa, Qh, RSI, HR, vVent, increment
+    debut_jour = st.sidebar.date_input("Choisir le jour de début des émissions :", pd.to_datetime('2021/03/06'), key='start')
+    increment = st.sidebar.slider("Choisir la durée d'exposition (en jours):", value=30, min_value=0, max_value=60, step=1)
+
+    fin_jour = pd.to_datetime(st.session_state.start)+timedelta(days=increment)
+    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    d = 1.35
+    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=45, max_value=155, step=5)
+    v, Ta, Pa, RSI, HR, vVent = meteo_slice(fin_jour, st.session_state.start)
+
 
 def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
     C = np.zeros((n_slice, ny, nx))
@@ -106,6 +127,7 @@ def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
         C[i, filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v[i]*σy*σz)
     return C
 
+@st.cache_data
 def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, Flux, titre, contour_aigue, contour_aigue_color, contour_chronique, contour_chronique_color, VTR, ERU=None, contour_ERU=[1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], contour_ERU_color=["indigo", "navy", 'teal', "lightgreen", 'orange', "fuchsia"], background=None):
     st.markdown(f"""
                     
@@ -239,7 +261,8 @@ def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, Flux, titre, contour_aigue
             cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
             cbar.set_label(r"Probabilité accrue de développer un cancer sur la période choisie"+" \n échelle de couleur (de gauche à droite) : \n 1/1 milliard, 1/100 millions, ... 1/10 000, 1/1000")
             st.pyplot(fig)
-        
+
+
 def Historique():
     #RGF93_to_WGS84 = Transformer.from_crs('2154', '4326', always_xy=True)
     #WGS84_to_RGF93 = Transformer.from_crs('4326', '2154', always_xy=True)
@@ -247,22 +270,6 @@ def Historique():
     #-5 mètre pour intégrer le décaissement
     x0, y0, z0 = 623208.070, 6273468.332, 230-5+19
 
-    alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
-    filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
-    alt = alt.loc[filtre, :]
-    vx, vy = np.unique(alt.loc[:, 0]), np.unique(alt.loc[:, 1])
-    nx, ny = len(vx), len(vy)
-    Z = np.zeros((ny, nx))
-    idY, idX = (alt.loc[:, 1]-vy.min())/75, (alt.loc[:, 0]-vx.min())/75
-    Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
-    X, Y = np.meshgrid(vx, vy)
-    X_, Y_, Z_ = X-x0, Y-y0, Z-z0
-    dist_XY = np.sqrt(X_**2+Y_**2)
-    extent = [X.min(), X.max(), Y.min(), Y.max()]
-    
-    meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
-    meteo.index = pd.to_datetime(meteo.iloc[:, :5])
-    
     surelevation(meteo)
     
     C = compute(ny, nx, len(v), dist_XY, X_, Y_, Z, z0)
@@ -270,7 +277,15 @@ def Historique():
     
     st.markdown("""
         <p> Pour les calculs suivant nous utilisons les modèles de Briggs et de Pasquill & Grifford (mode 2). Pour plus d'information se reporter au chapitre <a href='Comprendre_Le_Calcul_Et_Ses_Options' target='_self'>détaillant le calcul et ses options</a>. A noter que le calcul peut-etre long et que lorsqu'il s'execute à nouveau, les figures sont semi-transparentes.
-        """, unsafe_allow_html=True)
+        
+        Deux types de concentration à l'émission peuvent-être choisis: 
+        <ol>
+        <li>Les seuils imposés par la DREAL. Dans ce cas, pour certains métaux, la concentration maximum imposée est celle d'un ensemble de composés. Dans ce cas, on suppose que seul le métal sélectionné est émis, ce qui est une hypothèse très majorante.</li>
+        <li>Les émissions rapportées par ATOSCA</li>
+        </ol>
+        
+        Concernant la liste des composés, nous avons selectionné ceux pour lesquels nous avons trouvé des VTR et qui semblait majeurs au vu de leur concentration. La liste n'est donc pas exhaustive.
+                """, unsafe_allow_html=True)
     
     
     e = st.selectbox("Choisir un composé :",
@@ -281,8 +296,6 @@ def Historique():
                           ["Mesure ATOSCA, pièce E6", 'Seuil DREAL'], index=1)
     
     concentration = {"Mesure ATOSCA, pièce E6":emission_ATOSCA,
-                     "Moyenne des centrales, d'après l'étude du CAREPS":emission_CAREPS_moy,
-                     "Maximum des centrales, d'après l'étude du CAREPS":None,
                      'Seuil DREAL':emission_DREAL}
     
     #actualise le flux en fonction du débit de la cheminée
@@ -291,7 +304,6 @@ def Historique():
     S=np.pi*(d/2)**2
     O2 = st.sidebar.slider("Choisir la teneur en oxygène (%):", value=14.4, min_value=7., max_value=20., step=0.1)
     H = st.sidebar.slider("Choisir l'humidité relative des émissions (%):", value=13.7, min_value=5., max_value=30., step=0.1)
-    print(Vs, Ta, O2, H, Pa)
     centrale.get_Q_norm(Vs, Ta, O2, H, Pa, S=S, output=False)
     
     # fig, ax = plt.subplots(figsize=(10, 10))
@@ -315,150 +327,6 @@ def Historique():
 
 
 
-def Tps_réel():
-    Temperature, Humidite, IsDay, Precipitation, SolarPower, Pression, V_vents, Dir_vents, Raf_vents = Meteo_tool.MeteoDataLive()
-
-    Temperature = round(Temperature*100)/100
-    Pression    = round(Pression*100)/100
-    V_vents     = round(V_vents*100)/100
-    Dir_vents   = round(Dir_vents*100)/100
-    Raf_vents   = round(Raf_vents*100)/100
-
-    if IsDay==1: JourStatus ='jour'
-    else: JourStatus ='nuit'
-
-    TableParticule = pd.DataFrame(
-    [
-        {"Donnée": "Température",         "Valeur":Temperature,        "Unité":'°C'},
-        {"Donnée": "Humidité",            "Valeur":Humidite,           "Unité":'%'},
-        {"Donnée": "Jour / nuit",         "Valeur":JourStatus,         "Unité":''},
-        {"Donnée": "Précipitation",       "Valeur":Precipitation,      "Unité":'mm'},
-        {"Donnée": "Exposition nuageuse", "Valeur":SolarPower,         "Unité":'W/m²'},
-        {"Donnée": "Pression",            "Valeur":Pression,           "Unité":'hPa'},
-        {"Donnée": "Vitesse vents",       "Valeur":V_vents,            "Unité":'km/h'},
-        {"Donnée": "Direction vents",     "Valeur":Dir_vents,          "Unité":'°'},
-        {"Donnée": "Vitesse Rafales",     "Valeur":Raf_vents,          "Unité":'km/h'},
-
-    ]
-    )
-
-    st.sidebar.write(TableParticule.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-def Prévisions():
-    tz = pytz.timezone('Europe/Paris')
-    now = datetime.now(tz)
-    month = now.month
-    if month < 10:
-        month = '0'+str(month)
-    day = now.day
-    if day < 10:
-        day = '0'+str(day)    
-    today = str(now.year)+'-'+str(month)+'-'+str(day)
-    today = datetime.strptime(today, '%Y-%m-%d').date()
-    DayMenu = [today + timedelta(days = i) for i in range(8)]
-    ChosenDay = st.sidebar.selectbox('Choisissez le jour de prévisions',DayMenu[1:len(DayMenu)])
- 
-    MeteoData = Meteo_tool.MeteoDataFuture(str(ChosenDay))
-
-def Carte():
-    Earth_rad = 6371 #km
-    DataGPS = pd.read_csv('./DATA/BATIMENTS/BatimentsInteret.csv', sep=';')
-
-    DataGPS = DataGPS.astype({"Lat":"float"})
-    DataGPS = DataGPS.astype({"Longi":"float"})
-    DataGPS = DataGPS.astype({"Effectif":"float"})
-    interestingRow = DataGPS[DataGPS["Batiment"] == "Centrale à bitume"]
-    CoordCentraleLat = interestingRow["Lat"]
-    CoordCentraleLon = interestingRow["Longi"]
-
-    max_delta =  xmax/ (np.pi * Earth_rad*2 / 360)
-    zoom_lvl = map_tool.ZoomLvl(max_delta)
-
-    MapTiles = map_tool.SwitchMapStyle()
-
-    m = folium.Map(location=[CoordCentraleLat,CoordCentraleLon], zoom_start=zoom_lvl, tiles="OpenStreetMap")
-    m._children['openstreetmap'].tiles=MapTiles
-    folium.Circle(location=[CoordCentraleLat,CoordCentraleLon], fill_color='#000', radius=xmax*1000, weight=2, color="#000").add_to(m)
-
-    lgd_txt = '<span style="color: {col};">{txt}</span>'
-
-    #Creation des différents groupes
-    Ecole_Groupe = folium.FeatureGroup(name= lgd_txt.format( txt='Ecole', col= '#37A7DA'))
-    EHPAD_Groupe = folium.FeatureGroup(name= lgd_txt.format( txt='EHPAD / maison de retraite', col= '#C84EB0'))
-    Creche_Groupe= folium.FeatureGroup(name= lgd_txt.format( txt='Crèches', col= '#EC912E'))
-
-    Ecole_effectif = 0
-    EHPAD_effectif = 0
-    Creche_effectif = 0
-    
-    #Affichage des markers
-    for i in range(len(DataGPS)):
-        Type=DataGPS.Type[i]
-        DistanceBat = map_tool.DistanceAB_Earth(CoordCentraleLat,DataGPS.Lat[i],CoordCentraleLon,DataGPS.Longi[i])
-        
-        if float(DistanceBat)<=float(xmax):    
-            Message=DataGPS.Batiment[i]+" - "+DataGPS.Ville[i]
-            Effectif_CurBat =float( DataGPS.Effectif[i])
-            if Type==0:
-                IconColor='black'
-                Marker=folium.Marker([DataGPS.Lat[i],DataGPS.Longi[i]], tooltip=Message, icon=folium.Icon(color=IconColor)).add_to(m)
-            elif Type==1:
-                IconColor='blue'
-                Ecole_effectif = Ecole_effectif + Effectif_CurBat
-                Marker=folium.Marker([DataGPS.Lat[i],DataGPS.Longi[i]], tooltip=Message, icon=folium.Icon(color=IconColor))
-                Ecole_Groupe.add_child(Marker)
-                m.add_child(Ecole_Groupe)
-            elif Type==2:
-                IconColor='purple'
-                EHPAD_effectif = EHPAD_effectif + Effectif_CurBat
-                Marker=folium.Marker([DataGPS.Lat[i],DataGPS.Longi[i]], tooltip=Message, icon=folium.Icon(color=IconColor))
-                EHPAD_Groupe.add_child(Marker)
-                m.add_child(EHPAD_Groupe)
-            elif Type==3:
-                IconColor='orange'
-                Marker=folium.Marker([DataGPS.Lat[i],DataGPS.Longi[i]], tooltip=Message, icon=folium.Icon(color=IconColor))
-                Creche_Groupe.add_child(Marker)
-                m.add_child(Creche_Groupe)
-            else: #normalement aucun marker
-                IconColor='red'
-
-    folium.map.LayerControl('topleft', collapsed= False).add_to(m) 
-    st_data = st_folium(m, width=725, height=725)
-
-    TablePopulation = pd.DataFrame(columns=['Population concernée', 'Effectif'])
-     
-    if Ecole_effectif>0:#condition to rework
-        NvelleLigne = {"Population concernée": "Elèves","Effectif":Ecole_effectif}
-        TablePopulation = pd.concat([TablePopulation, pd.DataFrame([NvelleLigne])], ignore_index=True)
-
-    if EHPAD_effectif>0:
-        NvelleLigne = {"Population concernée": "Résidents EHPAD","Effectif":EHPAD_effectif}
-        TablePopulation = pd.concat([TablePopulation, pd.DataFrame([NvelleLigne])], ignore_index=True)
-
-    st.write(TablePopulation.to_html(escape=False, index=False), unsafe_allow_html=True)
-    st.write('')
-
-    st.title('Informations complémentaires')
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.write("")
-    with col2:
-        st.image(LegendMap, caption="Légende des différentes routes affichées",width=350)
-    with col3:
-        st.write("")
-        
-def data_explore():
-    global xmax
-    xmax = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=1.5, min_value=0.5, max_value=15., step=0.1)
-    TimeVision = st.sidebar.selectbox('Quelles données voulez-vous consulter?',('Historique', 'Temps réel', 'Prévisions'))
-    if TimeVision == 'Historique':
-        Historique()
-
-    elif TimeVision == 'Temps réel':
-        Tps_réel()
-
-    elif TimeVision == 'Prévisions':
-        Prévisions()
 
 
 st.set_page_config(page_title="Autour de la centrale", page_icon="")
@@ -473,4 +341,7 @@ st.markdown(
      <p>Les calculs réalisés ici sont des prévisions.</p> <p style="color:red">La réalité peut diverger de ces calculs.</p> <p>Des mesures in-situ sont donc indispensables.</p> <p>Ces prévisions permettent notamment d'optimiser les dispositifs de mesure.</p>
     """, unsafe_allow_html=True
 )
-data_explore()
+
+routes, batiments, Z, extent, X, Y, X_, Y_, dist_XY, meteo, vx, vy, nx, ny = load_data()
+xmax = st.sidebar.slider(r"Choisir le rayon d'impact de la centrale [km]", value=1.5, min_value=0.5, max_value=15., step=0.1)
+Historique()

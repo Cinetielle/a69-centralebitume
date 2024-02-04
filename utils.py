@@ -26,8 +26,9 @@ def show_code(demo):
         # Showing the code of the demo.
         st.markdown("## Code")
         sourcelines, _ = inspect.getsourcelines(demo)
-        st.code(textwrap.dedent("".join(sourcelines[1:])))
+        st.code(textwrap.dedent("".join(sourcelines)))
 
+@st.cache_data
 def Δh_Holland(Vs, v, d, Pa, Ts, Ta):
     """
 
@@ -54,6 +55,7 @@ def Δh_Holland(Vs, v, d, Pa, Ts, Ta):
     """
     return Vs*d*(1.5+0.00268*Pa*d*((Ts-Ta)/(Ts+273.15)))/v
 
+@st.cache_data
 def Δh_CarsonAndMoses(Vs, v, d, Qh):
     """
     Parameters
@@ -74,6 +76,7 @@ def Δh_CarsonAndMoses(Vs, v, d, Qh):
     """
     return -0.029*Vs*d/v + 2.62*np.sqrt(Qh)*d/v
 
+@st.cache_data
 def Δh_Concawes(v, d, Qh):
     """
     Parameters
@@ -92,6 +95,7 @@ def Δh_Concawes(v, d, Qh):
     """
     return 2.71*np.sqrt(Qh)*d/v**(3/4)
 
+@st.cache_data
 def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     """
     Formule la plus utilisée
@@ -131,6 +135,7 @@ def Δh_Briggs(x, Vs, v, d, Ts, Ta):
     res[x > xf] = (3/(2*0.6**2))**(1/3) * (Fb**(1/3)*x[x>xf]**(2/3))/v
     return res
 
+@st.cache_data
 def  stability_pasquill(v, RSI, HR, mode='24H'):
     """
     Définis les conditions suivantes et renvoi la stabilité de Pasquill en conséquence
@@ -240,6 +245,7 @@ def  stability_pasquill(v, RSI, HR, mode='24H'):
         print('Pasquill Stability error')
         return 'D'
 
+@st.cache_data
 def sigma(stability, x):
     """
     application restricted to downwind distance < 10km
@@ -335,8 +341,8 @@ def sigma(stability, x):
 class normalize(object):
     """
     O2_ref : float, optional
-        O2 fraction for reference
-    P0 : float, optional
+        O2 % for reference
+    T0 : float, optional
         °K, température de référence
     P0 : float, optional
         Pa, pression de référence
@@ -345,16 +351,13 @@ class normalize(object):
         self.O2ref = O2_ref
         self.T0 = T0
         self.P0 = P0
-    
-    def get_P_with_Qnorm(self, Q_norm, v_out, T, O2, H, S=np.pi*(1.35/2)**2):
-        self.P = Q_norm/((v_out*S*3600)/(T/self.T0))*self.P0
 
     def get_Q_norm(self, v_out, T, O2sec, H, P, S=np.pi*(1.35/2)**2, output=True):
         """
         Parameters
         ----------
         v_out : float
-            m/s, vitesse d'éjection des gaz de la cheminée'
+            m/s, vitesse d'éjection des gaz de la cheminée
         T : float
             °C, température du gaz en sortie de cheminée
         O2sec : float
@@ -366,36 +369,31 @@ class normalize(object):
         S : float, optional
             m2, surface (intérieure) du conduit de cheminée au niveau du rejet
         """
-        T=T+self.T0
+        T=T+273.15 #degrés kelvin
         hum = (100-H)/100
-        if P is None:
-            try:
-                P =self.P
-            except:
-                print("La pression n'est pas définie")
-                
-        Q = v_out*S*3600
+               
+        Q = v_out*S*3600 # débit horaire
         
-        Qhum =(Q*P*self.T0)/(self.P0*T)
-        Qsec = Qhum*hum
+        Qhum =(Q*P*self.T0)/(self.P0*T) #débit humide normalisé
+        Qsec = Qhum*hum #débit sec normalisé
         O2_corr = (21-O2sec)/(21-self.O2ref)
-        Qhum_O2ref = Qhum*O2_corr
+        Qhum_O2ref = Qhum*O2_corr # débit humide normalisé à 17% d'O2
         self.Q0 = Qhum_O2ref
         if output:
             return {'Q, m3/h':Q, 'Qhum, (Nm3/h)h':Qhum, 'Qsec, (Nm3/h)s':Qsec, f'Qhum_{int(self.O2ref*100)}%O2, (Nm3/h)h_O2':Qhum_O2ref}
     
-    def get_DébitMassique(self, concentration_0, mode='h_02'):
+    def get_DébitMassique(self, concentration_0):
         """
 
         Parameters
         ----------
         concentration_0 : float
-            (g/Nm3)h_17%O2
+            (g/Nm3)h_17%O2, la concentration normalisée humide à 17% d'O2
 
         Returns
         -------
         float
-            g/s, le débit massique horaire
+            g/s, le débit massique par seconde
 
         """
         try:
@@ -404,67 +402,3 @@ class normalize(object):
         except:
             print("Il faut définir le débit normalisé (self.get_Q_norm())")
             
-if __name__ == '__main__':
-    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
-    Q=71100 #(m3/h)h
-    Qh = 53700 #(Nm3/h)h
-    Qsec=46300 #(Nm3/h)s
-    O2 = 0.1494 # fraction d'O2
-    T= 83.4 #°C
-    v= 13.8 #m/s
-    H= 13.7 #%humidité relative
-    d=1.35
-    S=np.pi*(d/2)**2 #m2
-    P=99.8*1E3#-0.05*1E3 #Pa
-    MVsec = 1.09 #(kg/Nm3)s
-    MVhum = 0.93 #(kg/Nm3)h
-    Cpoussière_h = 4.5 #(mg/Nm3)h
-    Cpoussière_s = 5.2 #(mg/Nm3)s
-    Cpoussière_h_02 = 2.2 #(mg/Nm3)h_O2
-    FluxHoraire_poussière = 0.24 #kg/h 0.06666 g/s
-    
-    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)
-    poussière = centrale.get_DébitMassique(Cpoussière_h_02*1E-3)
-    53664.24864014637*Cpoussière_h*1E-3
-    46312.24657644631*Cpoussière_s*1E-3
-    82009.9799731468*Cpoussière_h_02*1E-3
-
-
-
-    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
-    
-    Qh = 53400 #(Nm3/h)h
-    Qsec= 46500#(Nm3/h)s
-    O2 = 13/(1-0.129) # fraction d'O2
-    T= 131 #°C
-    v= 21.8 #m/s
-    H= 12.9 #%humidité relative
-    d=1.15
-    S=np.pi*(d/2)**2 #m2
-    Q= v*S*3600 #(m3/h)h
-    P=98.3*1E3#-24.2 #Pa
-
-
-    Cpoussière_s = 11.8 #(mg/Nm3)s
-    C_CO_h_02 = 98.1 #(mg/Nm3)h_O2
-    FluxHoraire_poussière = 0.546 #kg/h
-    FluxHoraire_CO = 7.95 #kg/h
-    
-    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)
-    CO = centrale.get_DébitMassique(C_CO_h_02*1E-3)
-
-    46557.329967947306*Cpoussière_s*1E-3
-    81176.3511530517*C_CO_h_02*1E-3
-    
-    
-    centrale = normalize(O2_ref=17, T0=273, P0=101.3E3)
-    
-    H= 5 #%humidité relative
-    O2 = 10/(1-H/100) # fraction d'O2
-    T= 60 #°C
-    v= 23.4 #m/s
-    d=1.35
-    S=np.pi*(d/2)**2 #m2
-    Q= v*S*3600 #(m3/h)h
-    P=100.4*1E3#-24.2 #Pa
-    Q_test = centrale.get_Q_norm(v, T, O2, H, P, S=S)

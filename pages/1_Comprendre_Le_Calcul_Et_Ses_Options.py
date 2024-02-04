@@ -39,7 +39,6 @@ import matplotlib.pyplot as plt
 
 import thermo
 
-
 image_DP = Image.open('./im/E9F7Q18WEAc7P8_.jpeg')
 image_DP2 = Image.open('./im/Gaussian_Plume_fr.png')
 image_DP3 = Image.open('./im/Turner1970.png')
@@ -69,22 +68,26 @@ villes = {'Revel': [619399.490,6262672.707],
          'Graulhet':[618445.042,6296272.167],
          'Blan':[619758.761,6270229.387]}
 
-alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
-filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
-alt = alt.loc[filtre, :]
-vx, vy = np.unique(alt.loc[:, 0]), np.unique(alt.loc[:, 1])
-nx, ny = len(vx), len(vy)
-Z = np.zeros((ny, nx))
-idY, idX = (alt.loc[:, 1]-vy.min())/75, (alt.loc[:, 0]-vx.min())/75
-Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
-X, Y = np.meshgrid(vx, vy)
-X_, Y_, Z_ = X-x0, Y-y0, Z-z0
-dist_XY = np.sqrt(X_**2+Y_**2)
-extent = [X.min(), X.max(), Y.min(), Y.max()]
+@st.cache_data
+def load_data():
+    alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
+    filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
+    alt = alt.loc[filtre, :]
+    vx, vy = np.unique(alt.loc[:, 0]), np.unique(alt.loc[:, 1])
+    nx, ny = len(vx), len(vy)
+    Z = np.zeros((ny, nx))
+    idY, idX = (alt.loc[:, 1]-vy.min())/75, (alt.loc[:, 0]-vx.min())/75
+    Z[idY.to_numpy(dtype=int), idX.to_numpy(dtype=int)] = alt.loc[:, 2]
+    X, Y = np.meshgrid(vx, vy)
+    X_, Y_, Z_ = X-x0, Y-y0, Z-z0
+    dist_XY = np.sqrt(X_**2+Y_**2)
+    extent = [X.min(), X.max(), Y.min(), Y.max()]
 
-meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
-meteo.index = pd.to_datetime(meteo.iloc[:, :5])
+    meteo = pd.read_csv('./DATA/METEO/Donnees_meteo_Puylaurens.csv', sep=';', encoding='UTF-8')
+    meteo.index = pd.to_datetime(meteo.iloc[:, :5])
+    return Z, extent, X, Y, X_, Y_, dist_XY, meteo, vx, vy, nx, ny
 
+@st.cache_data
 def topographie():
     fig, ax = plt.subplots()
     ax.scatter(x0, y0, c='red', label='Usine à bitume RF500')
@@ -96,6 +99,7 @@ def topographie():
     ax.legend()
     st.pyplot(fig)
 
+@st.cache_data
 def topographie_zoom():
     idxs, idxe = 250, 350
     idys, idye = 225, 285
@@ -115,33 +119,13 @@ def topographie_zoom():
     ax.legend(loc='lower left')
     st.pyplot(fig)
 
-def surelevation():
-    global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
-    td = meteo.index[-1]-meteo.index[0]
-    st.sidebar.write("Choisir la météo d'une journée particulière:")
-    
-    def update_date_meteo():
-        st.session_state.date_meteo = pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment)
-        
-    try:
-        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=(pd.to_datetime(st.session_state.date_meteo)-pd.to_datetime('2021/03/06')).days, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
-    except:
-        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=0, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
-        
-    st.sidebar.date_input("A l'aide du calendrier :", pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment), key='date_meteo')
-
-    
-    date_meteo = st.session_state.date_meteo
-    
+@st.cache_data
+def slice_meteo(date_meteo):
     debut_jour = pd.to_datetime(date_meteo)
     fin_jour = pd.to_datetime(date_meteo)+timedelta(days=1)
 
     filtre = (meteo.index >= debut_jour) & (meteo.index <= fin_jour)
     meteo_slice = meteo.iloc[filtre, [5, 6, 7, 8, 10, 11, 12, 13, 14]]
-    xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
-    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
-    d = 1.35
-    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
 
     v = meteo_slice.iloc[:, 3].mean()/3.6 # vitesse du vent en m/s
     Pa = meteo_slice.iloc[:, 4].mean()  # pression atmosphérique en Pa
@@ -175,6 +159,32 @@ def surelevation():
     ax.legend()
     ax.set_title("Hauteur du centre du panache dans la direction du vent \n selon différents modèles")
     st.pyplot(fig)
+    return  v, Ta, Pa, Qh, RSI, HR, vVent
+
+def surelevation():
+    global Vs, v, d, Ts, Ta, Pa, xmax, Qh, RSI, HR, vVent
+    td = meteo.index[-1]-meteo.index[0]
+    st.sidebar.write("Choisir la météo d'une journée particulière:")
+    
+    def update_date_meteo():
+        st.session_state.date_meteo = pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment)
+        
+    try:
+        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=(pd.to_datetime(st.session_state.date_meteo)-pd.to_datetime('2021/03/06')).days, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
+    except:
+        st.sidebar.slider("En nombre de jour après le 6 mars 2021 :", value=0, min_value=0, max_value=td.days, step=1, key="increment", on_change=update_date_meteo)
+        
+    st.sidebar.date_input("A l'aide du calendrier :", pd.to_datetime('2021/03/06')+timedelta(days=st.session_state.increment), key='date_meteo')
+
+    
+    date_meteo = st.session_state.date_meteo
+
+    xmax = st.sidebar.slider(r"Choisir la distance maximale où évaluer les impacts", value=5000, min_value=1000, max_value=50000, step=10)
+    Vs = st.sidebar.slider(r"Choisir la vitesse ($m.s^{-1}$) des gaz en sortie de cheminée ", value=13.9, min_value=8., max_value=23.4, step=0.1)
+    d = 1.35
+    Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=80, max_value=150, step=1)
+    v, Ta, Pa, Qh, RSI, HR, vVent = slice_meteo(date_meteo)
+
 
 def plot_dispersion():
     global x, PG1, PG2, ASME79, Klug1969
@@ -266,21 +276,9 @@ def plot_dispersion():
     ax2.set_ylabel("Coefficient de dispersion dans le plan vertical \n" + r"et perpendiculairement à la direction du vent ($\sigma _z$, m).")
     st.pyplot(fig2)
 
-def coupe_vertical():
-    global SA, SA_climatique
-    zmax = st.slider("Choisir l'altitude maximum à représenter :", value=1000, min_value=100, max_value=20000, step=100)
+@st.cache_data
+def plot_cv(zmax, i, Xy, SA):
     z = np.linspace(0, zmax, 1000)
-    MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=0)
-    if MCD =="Pasquill & Gifford, mode 2":
-        i=1
-    elif MCD =="ASME 1979, mode 1":
-        i = 2
-    elif MCD =="Klug 1969, mode 1":
-        i=3
-    Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
-    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
-    liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
-    SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
     X, Zx = np.meshgrid(x[:, 0], z)
     Y = 0
     surelevation = Δh_Briggs(X, Vs, v, d, Ts, Ta)
@@ -316,6 +314,22 @@ def coupe_vertical():
     st.write('Coupe perpendiculaire à la direction du vent (en Lilas sur la figure précédente):')
     st.pyplot(fig2)
 
+def coupe_vertical():
+    global SA, SA_climatique
+    zmax = st.slider("Choisir l'altitude maximum à représenter :", value=1000, min_value=100, max_value=20000, step=100)
+    MCD = st.selectbox("Définir un modèle de coefficient de dispersion", ["Pasquill & Gifford, mode 2", "ASME 1979, mode 1", "Klug 1969, mode 1"], index=0)
+    if MCD =="Pasquill & Gifford, mode 2":
+        i=1
+    elif MCD =="ASME 1979, mode 1":
+        i = 2
+    elif MCD =="Klug 1969, mode 1":
+        i=3
+    Xy = st.slider("Choisir la distance à la source de la coupe verticale perpendiculaire à la direction du vent", value=1000, min_value=100, max_value=10000, step=100)
+    SA_climatique = stability_pasquill(v, RSI, HR, mode='24H')
+    liste_SA = ['A', 'A-B', 'B', 'B-C', 'C', 'C-D', 'D', 'E', 'F']
+    SA = st.selectbox("Redéfinir la condition de stabilité atmosphérique (la valeur par défault dépend des conditions météorologiques de la journée) : ", liste_SA, index=liste_SA.index(SA_climatique))
+    plot_cv(zmax, i, Xy, SA)
+
 def collec_to_gdf(collec_poly):
     """Transform a `matplotlib.contour.QuadContourSet` to a GeoDataFrame"""
     polygons = []
@@ -340,7 +354,8 @@ def collec_to_gdf(collec_poly):
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
 
-def carte_stationnaire():
+@st.cache_data
+def plot_cs(vVent):
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))
 
@@ -390,8 +405,12 @@ def carte_stationnaire():
     st.markdown("(e-09 : un milliardième ; e-06 : un millionième ; e-03 : un millième)", unsafe_allow_html=True)
     st.markdown(r"Cela équivaut (pour un rejet moyen de 5 $t.h^{-1}$), dans les limites du modèle, à une augmentation moyenne (maximum) du CO2 dans l'air de ($mol.m^3$) :", unsafe_allow_html=True)
     st.markdown(f"<p><span style='font-size: 40px;'> {max_molCO2:.2e} (<span style='color:Red; font-size: 40px;'>&#8679; {CO2_increase:.2%}</span>)</span></p> ", unsafe_allow_html=True)
+    return im
 
-
+def carte_stationnaire():
+    im = plot_cs(vVent)
+    contour_log10 = np.arange(-15.,-2.)
+    contour = [10**i for i in contour_log10]
     #folium map 
     cmap = mpl.colormaps['nipy_spectral']
     norm = mpl.colors.LogNorm(vmin=1E-15, vmax=1E-2)
@@ -416,47 +435,6 @@ def carte_stationnaire():
     st_map = st_folium(m, use_container_width=True)
     
 
-def carte_bouffee():
-    vVent_mean = np.nanmean(vVent, axis=0)
-    v = np.sqrt(np.sum(vVent_mean**2))
-
-    #fig, ax = plt.subplots()
-    #ax.scatter(vVent[:, 0], vVent[:, 1], c=np.sqrt(np.sum(vVent**2, axis=1)), cmap='jet')
-    #ax.scatter(vVent_mean[0], vVent_mean[1], c='k')
-    #ax.set_xlim(-6, 6)
-    #ax.set_ylim(-6, 6)
-    #st.pyplot(fig)
-
-    C = np.zeros((ny, nx, 24))
-    Δh = Δh_Briggs(dist_XY, Vs, v, d, Ts, Ta)
-    dot_product=X_*vVent_mean[0]+Y_*vVent_mean[1]
-    magnitudes=v*dist_XY
-    # angle entre la direction du vent et le point (x,y)
-    subtended=np.arccos(dot_product/(magnitudes+1e-15));
-    # distance le long de la direction du vent jusqu'à une ligne perpendiculaire qui intersecte x,y
-    downwind=np.cos(subtended)*dist_XY
-    filtre = np.where(downwind > 0)
-    crosswind=np.sin(subtended)*dist_XY
-    sr = sigma(SA_climatique, downwind)
-    σy =sr[1, 0, filtre[0],filtre[1]]
-    σz =sr[1, 1, filtre[0],filtre[1]]
-    C[filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v*σy*σz)
-    fig, ax = plt.subplots(figsize=(10, 10))
-    contour = np.arange(-15.,-2.)
-    contour = [10**i for i in contour]
-    ax.imshow(Z, extent=extent, cmap='terrain', origin='lower', zorder=0)
-    im = ax.contour(C, contour, extent=extent, cmap='nipy_spectral', vmin=1E-15, vmax=1E-3, origin='lower', norm='log', zorder=1)
-
-    ax.scatter(x0, y0, c='crimson', zorder=3)
-    for n, l in villes.items():
-        ax.scatter(l[0], l[1], c='w', zorder=2)
-        ax.text(l[0], l[1], n, zorder=3, fontsize=10)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("top", size="7%", pad="10%")
-    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
-    cbar.set_label('Facteur de dilution de la concentration ; \n le code couleur ne représente pas des seuils sanitaires')
-    st.pyplot(fig)
-
 st.set_page_config(page_title="Le calcul et ses options", page_icon=":waning_gibbous_moon:")
 st.markdown("# Le calcul et ses options")
 st.sidebar.header("Paramètres")
@@ -465,7 +443,7 @@ st.markdown(
     ## Principe du code partagé ici.
 
     <div style="text-align: justify;">
-    Le principe de l'algorithme empirique utilisé ici et celui de la dispersion atmosphérique des panaches gaussiens.
+    Le principe de l'algorithme empirique utilisé ici est celui de la dispersion atmosphérique des panaches gaussiens.
     </div>
     
     """, unsafe_allow_html=True
@@ -503,7 +481,7 @@ st.markdown(
 
     ### Généralités et paramètres clefs.
     <p>
-    Nous allons exposés ci-après les principaux éléments de connaissances nécessaires à la résolution de ce type d'équation empirique (c'est à dire, contrainte par des observations récurrentes):
+    Nous allons exposer ci-après les principaux éléments de connaissances nécessaires à la résolution de ce type d'équation empirique (c'est à dire, contrainte par des observations récurrentes):
     </p>
     <ol>
     <li>des données météorologiques : 
@@ -577,6 +555,8 @@ st.markdown(
 
     """, unsafe_allow_html=True
 )
+
+Z, extent, X, Y, X_, Y_, dist_XY, meteo, vx, vy, nx, ny = load_data()
 
 topographie()
 
@@ -743,17 +723,14 @@ st.markdown("""
 )
 
 st.markdown("""
-        ## Calcul stationnaire ou par bouffée ?
+        ## Calcul stationnaire
     
         <div style="text-align: justify;">    
         Comme nous l'avons déjà mentionné, deux manières de calculer sont possibles:
             <li> En utilisant un modèle de panache gaussien stationnaire </li>
             <li> En utilisant un modèle par bouffées </li>
 
-        Dans cette partie nous allons comparer les deux résultats sur la journée sélectionnée. Cette comparaison n'est possible que grace aux données météorologiques aux pas de 5 minutes que nous avons pu récupérer.
-        </div>   
-            
-        ### Le calcul stationnaire
+        Dans cette partie nous effectuer le calcul stationnaire</div>   
             
         Le calcul stationnaire repose sur les valeurs météorologiques moyennes de la journée. Elle suppose leur variation faible.
         """
@@ -761,11 +738,3 @@ st.markdown("""
 )
 
 carte_stationnaire()
-
-st.markdown("""
-        ### Le calcul par bouffée
-            
-        En cours de construction.
-        """
-    , unsafe_allow_html=True
-)

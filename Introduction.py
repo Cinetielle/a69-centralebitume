@@ -34,21 +34,20 @@ def run():
 
     st.markdown(
         """
-        L'objet de ce site web est de quantifier objectivement et en totale transprence les impacts des émissions volatiles des cheminées des centrales d'enrobage à chaud prévu sur le site de Puylaurens. 
+        L'objet de ce site web est de quantifier objectivement et en totale transparence les impacts des émissions volatiles des cheminées des centrales d'enrobage à chaud prévu sur le site de Puylaurens. 
 
         Ce site est composé comme suit:
 
         <ol>
-        <li> Une page décrivant les données météorologiques de Puylaurens, préalable indispensable aux modélisations, (en chantier)</li>
-        <li> Une page décrivant le calcul effectué et les options disponibles, (en chantier)</li>
-        <li> Une page décrivant les produits émis par les centrales à bitume à chaud et leurs potentiels impact sur la santé, (à construire) </li>
-        <li> Une page décrivant l'exposition cartographique aux produits émis par la centrale en fonction des conditions météo passées, (à construire)</li>
-        <li> Une page décrivant l'exposition de votre domicile aux produits émis par la centrale en fonction des conditions météo passées, (à construire)</li>
-        <li> Une page décrivant l'exposition cartographique aux produits émis par la centrale en fonction des conditions météo futures, (à construire)</li>
-        <li> Une page décrivant l'exposition de votre domicile aux produits émis par la centrale en fonction des conditions météo futures. (à construire)</li>
+        <li> Une page décrivant les données météorologiques de Puylaurens, préalable indispensable aux modélisations </li>
+        <li> Une page décrivant le calcul effectué et les options disponibles </li>
+        <li> Une page décrivant l'exposition cartographique aux produits émis par la centrale en fonction des conditions météo passées</li>
+        <li> Une page décrivant la situation de votre domicile vis à vis de la centrale </li>
+        <li> Une page décrivant quelques paramètres d'émissions des centrales à bitume </li>
         </ol>
 
         Ce site est réalisé par Citoyens déroutés, un collectif du territoire Puylaurentais qui souhaite s'informer, informer et protéger.
+        Il s'agit de la version 202401 du logiciel.
     """, unsafe_allow_html=True
     )    
         

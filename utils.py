@@ -361,7 +361,7 @@ class normalize(object):
         T : float
             °C, température du gaz en sortie de cheminée
         O2sec : float
-            % O2 ; O2sec = O2hum/(100-H)
+            % O2 ; O2sec = O2hum/hum
         H : float
             % humidité relative
         P : float

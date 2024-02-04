@@ -304,7 +304,7 @@ def Historique():
     S=np.pi*(d/2)**2
     O2 = st.sidebar.slider("Choisir la teneur en oxygène (%):", value=14.4, min_value=7., max_value=20., step=0.1)
     H = st.sidebar.slider("Choisir l'humidité relative des émissions (%):", value=13.7, min_value=5., max_value=30., step=0.1)
-    O2 = O2/(100-H)
+    O2 = O2/(1-H*1E-2) #O2 sec
     centrale.get_Q_norm(Vs, Ta, O2, H, Pa, S=S, output=False)
     
     # fig, ax = plt.subplots(figsize=(10, 10))

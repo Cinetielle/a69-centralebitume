@@ -108,7 +108,7 @@ def surelevation(meteo):
     v, Ta, Pa, RSI, HR, vVent = meteo_slice(fin_jour, st.session_state.start)
 
 @st.cache_data(persist='disk')
-def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
+def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0, vVent):
     C = np.zeros((n_slice, ny, nx))
     for i in range(n_slice):
         Δh = Δh_Briggs(dist_XY, Vs, v[i], d, Ts, Ta[i])
@@ -272,7 +272,7 @@ def Historique():
 
     surelevation(meteo)
     
-    C = compute(ny, nx, len(v), dist_XY, X_, Y_, Z, z0)
+    C = compute(ny, nx, len(v), dist_XY, X_, Y_, Z, z0, vVent)
 
     
     st.markdown("""

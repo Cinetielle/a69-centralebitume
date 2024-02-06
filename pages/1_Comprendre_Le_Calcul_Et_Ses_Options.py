@@ -68,7 +68,7 @@ villes = {'Revel': [619399.490,6262672.707],
          'Graulhet':[618445.042,6296272.167],
          'Blan':[619758.761,6270229.387]}
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def load_data():
     alt = pd.read_csv('./DATA/TOPOGRAPHIE/BDALT.csv', header=None)
     filtre = (alt.loc[:, 0] < 640000) & (alt.loc[:, 1] > 6.255*1E6)
@@ -87,7 +87,7 @@ def load_data():
     meteo.index = pd.to_datetime(meteo.iloc[:, :5])
     return Z, extent, X, Y, X_, Y_, dist_XY, meteo, vx, vy, nx, ny
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def topographie():
     fig, ax = plt.subplots()
     ax.scatter(x0, y0, c='red', label='Usine à bitume RF500')
@@ -99,7 +99,7 @@ def topographie():
     ax.legend()
     st.pyplot(fig)
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def topographie_zoom():
     idxs, idxe = 250, 350
     idys, idye = 225, 285
@@ -119,7 +119,7 @@ def topographie_zoom():
     ax.legend(loc='lower left')
     st.pyplot(fig)
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def slice_meteo(date_meteo):
     debut_jour = pd.to_datetime(date_meteo)
     fin_jour = pd.to_datetime(date_meteo)+timedelta(days=1)
@@ -276,7 +276,7 @@ def plot_dispersion():
     ax2.set_ylabel("Coefficient de dispersion dans le plan vertical \n" + r"et perpendiculairement à la direction du vent ($\sigma _z$, m).")
     st.pyplot(fig2)
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def plot_cv(zmax, i, Xy, SA):
     z = np.linspace(0, zmax, 1000)
     X, Zx = np.meshgrid(x[:, 0], z)
@@ -354,7 +354,7 @@ def collec_to_gdf(collec_poly):
     gpfile  =gpd.GeoDataFrame(geometry=polygons, crs='2154')
     return gpfile
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def plot_cs(vVent):
     vVent_mean = np.nanmean(vVent, axis=0)
     v = np.sqrt(np.sum(vVent_mean**2))

@@ -51,7 +51,7 @@ villes = {'Revel': [619399.490,6262672.707],
          'Graulhet':[618445.042,6296272.167],
          'Blan':[619758.761,6270229.387]}
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def load_data():
     x0, y0, z0 = 623208.070, 6273468.332, 230-5+19
     routes = gpd.read_file('./DATA/ROUTES/route_CBPuylau.shp')
@@ -107,7 +107,7 @@ def surelevation(meteo):
     Ts = st.sidebar.slider(r"Choisir la température en sortie de cheminée", value=110, min_value=45, max_value=155, step=5)
     v, Ta, Pa, RSI, HR, vVent = meteo_slice(fin_jour, st.session_state.start)
 
-
+@st.cache_data(persist='disk')
 def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
     C = np.zeros((n_slice, ny, nx))
     for i in range(n_slice):
@@ -127,7 +127,7 @@ def compute(ny, nx, n_slice, dist_XY, X_, Y_, Z, z0):
         C[i, filtre[0], filtre[1]] = (np.exp(-crosswind[filtre[0],filtre[1]]**2./(2.*σy**2.))* np.exp(-(Z[filtre[0],filtre[1]] -z0- Δh[filtre[0],filtre[1]])**2./(2.*σz**2.)))/(2.*np.pi*v[i]*σy*σz)
     return C
 
-@st.cache_data
+@st.cache_data(persist='disk')
 def plot_composés(Z, x0, y0, extent, C, Cmax, Cmean, Flux, titre, contour_aigue, contour_aigue_color, contour_chronique, contour_chronique_color, VTR, ERU=None, contour_ERU=[1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], contour_ERU_color=["indigo", "navy", 'teal', "lightgreen", 'orange', "fuchsia"], background=None):
     st.markdown(f"""
                     

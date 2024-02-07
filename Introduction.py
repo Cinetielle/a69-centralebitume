@@ -46,7 +46,7 @@ def run():
         <li> Une page décrivant quelques paramètres d'émissions des centrales à bitume </li>
         </ol>
 
-        Ce site est réalisé par Citoyens déroutés, un collectif du territoire Puylaurentais qui souhaite s'informer, informer et protéger.
+        Ce site est réalisé par <a href="https://puylaurens-citoyens-deroutes.odoo.com/"><Citoyens déroutés></a>, un collectif du territoire Puylaurentais qui souhaite s'informer, informer et protéger.
         Il s'agit de la version 202401 du logiciel.
     """, unsafe_allow_html=True
     )    
